@@ -1,0 +1,16 @@
+{# Postal+ — cabeçalho + navegação interna. Recebe: nav (web, ativo, itens, v), titulo, subtitulo #}
+<div class="pp-cabecalho d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
+    <div>
+        <h1 class="pp-titulo mb-1">{{ titulo }}</h1>
+        <div class="text-secondary">{{ subtitulo }}</div>
+    </div>
+    <ul class="nav nav-pills pp-nav" data-pp-nav="{{ nav.ativo }}">
+        {% for item in nav.itens %}
+            <li class="nav-item">
+                <a class="nav-link {{ item.chave == nav.ativo ? 'active' : '' }}" href="{{ item.url }}">
+                    <i class="{{ item.icone }} me-1"></i>{{ item.titulo }}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</div>

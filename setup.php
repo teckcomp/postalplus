@@ -42,7 +42,7 @@ function plugin_version_postalplus()
     return [
         'name'         => 'Postal+',
         'version'      => PLUGIN_POSTALPLUS_VERSION,
-        'author'       => '<a href="https://teckcomp.com.br">Teckcomp</a>',
+        'author'       => 'Teckcomp',
         'license'      => 'GPLv3+',
         'homepage'     => 'https://github.com/teckcomp/postalplus',
         'requirements' => [

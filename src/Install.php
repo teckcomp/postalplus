@@ -72,6 +72,7 @@ class Install
             'cws_cartao'                => '',
             'cws_token'                 => '',
             'cws_token_expira'          => '',
+            'cws_apis'                  => '[]',
             'freq_saiu_entrega'         => 30,
             'freq_transito'             => 60,
             'freq_aguardando_retirada'  => 480,

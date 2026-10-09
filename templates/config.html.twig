@@ -1,0 +1,227 @@
+{# Postal+ — Configuração. Variáveis: nav, tela #}
+{% set cfg = tela.cfg %}
+{% set bloq = tela.pode_alterar ? '' : 'disabled' %}
+<div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="config">
+    {% include '@postalplus/_nav.html.twig' with {
+        nav: nav,
+        titulo: 'Configuração',
+        subtitulo: 'Acesso à API dos Correios, frequência de consulta e canais de notificação.'
+    } only %}
+
+    {% if tela.simulado %}
+        <div class="alert alert-warning py-2" data-pp-simulado="1">
+            <div><i class="ti ti-flask me-1"></i><strong>Modo simulado</strong> (PLUGIN_POSTALPLUS_SIMULADO): nenhuma chamada sai para os Correios.</div>
+        </div>
+    {% endif %}
+
+    <form method="post" action="{{ nav.web }}/front/config.php" id="pp-form-config" autocomplete="off">
+        <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+
+        <div class="row g-3">
+            <div class="col-xl-6">
+                {# ---- Credenciais CWS ---- #}
+                <div class="card pp-card mb-3">
+                    <div class="card-header"><h3 class="card-title">Credenciais CWS · Correios Web Services</h3></div>
+                    <div class="card-body">
+                        <label class="form-label">Ambiente</label>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            {% for valor, rotulo in tela.ambientes %}
+                                <label class="pp-opcao {{ cfg.ambiente == valor ? 'pp-opcao-ativa' : '' }}">
+                                    <input class="form-check-input me-2" type="radio" name="ambiente" value="{{ valor }}"
+                                           {{ cfg.ambiente == valor ? 'checked' : '' }} {{ bloq }}>{{ rotulo }}
+                                </label>
+                            {% endfor %}
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="pp-usuario">Usuário (Meu Correios)</label>
+                                <input class="form-control" id="pp-usuario" name="cws_usuario" value="{{ cfg.cws_usuario }}"
+                                       placeholder="Usuário do contrato" maxlength="100" {{ bloq }}>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="pp-codigo">Código de acesso à API</label>
+                                <input class="form-control" id="pp-codigo" name="cws_codigo_acesso" type="password" value=""
+                                       autocomplete="new-password" maxlength="200" {{ bloq }}
+                                       placeholder="{{ cfg.tem_codigo_acesso ? 'Salvo · não é exibido' : 'Não informado' }}"
+                                       data-pp-codigo-salvo="{{ cfg.tem_codigo_acesso ? '1' : '0' }}">
+                                {% if cfg.tem_codigo_acesso and tela.pode_alterar %}
+                                    <label class="form-check mt-1 mb-0 small">
+                                        <input class="form-check-input" type="checkbox" name="apagar_codigo_acesso" value="1">
+                                        <span class="form-check-label">Apagar o código salvo</span>
+                                    </label>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="pp-contrato">Número do contrato</label>
+                                <input class="form-control" id="pp-contrato" name="cws_contrato" value="{{ cfg.cws_contrato }}"
+                                       placeholder="nº do contrato" inputmode="numeric" maxlength="20" {{ bloq }}>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="pp-cartao">Cartão de postagem</label>
+                                <input class="form-control" id="pp-cartao" name="cws_cartao" value="{{ cfg.cws_cartao }}"
+                                       placeholder="nº do cartão" inputmode="numeric" maxlength="20" {{ bloq }}>
+                            </div>
+                        </div>
+
+                        <p class="text-secondary small mt-3 mb-0">
+                            O código de acesso é gerado em cws.correios.com.br › Gestão de Acesso a APIs. Fica criptografado
+                            no banco do GLPI e nunca é exibido depois de salvo. <strong>Não use "Regerar" no CWS</strong> sem
+                            conferir se outra automação usa o mesmo código.
+                        </p>
+
+                        <div class="pp-token mt-3" id="pp-token" data-pp-token="{{ cfg.token_valido ? 'valido' : (cfg.tem_token ? 'expirado' : 'nenhum') }}">
+                            {% if cfg.token_valido %}
+                                <span class="badge bg-green-lt"><i class="ti ti-key me-1"></i>Token válido até {{ cfg.token_expira|date('d/m/Y H:i') }}</span>
+                            {% elseif cfg.tem_token %}
+                                <span class="badge bg-orange-lt"><i class="ti ti-key me-1"></i>Token expirado — será renovado na próxima consulta</span>
+                            {% else %}
+                                <span class="badge bg-secondary-lt"><i class="ti ti-key-off me-1"></i>Nenhum token gerado ainda</span>
+                            {% endif %}
+                        </div>
+
+                        <div id="pp-resultado-teste" class="mt-3 d-none" aria-live="polite"></div>
+                    </div>
+                    {% if tela.pode_alterar %}
+                        <div class="card-footer d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-secondary" id="pp-testar"
+                                    data-url="{{ tela.url_testar }}">
+                                <i class="ti ti-plug-connected me-1"></i>Testar conexão
+                            </button>
+                            <button type="submit" class="btn btn-primary" name="salvar" value="1">Salvar</button>
+                        </div>
+                    {% endif %}
+                </div>
+
+                {# ---- Notificações ---- #}
+                <div class="card pp-card mb-3">
+                    <div class="card-header"><h3 class="card-title">Notificações</h3></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label" for="pp-webhook">Webhook do n8n para WhatsApp</label>
+                            <input class="form-control" id="pp-webhook" name="webhook_n8n" type="url" value="{{ cfg.webhook_n8n }}"
+                                   placeholder="https://[seu-n8n]/webhook/rastreio" {{ bloq }}>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="pp-perfis">Alertas em tela para os perfis</label>
+                            <select class="form-select" id="pp-perfis" name="alerta_perfis[]" multiple size="4" {{ bloq }}>
+                                {% for p in tela.perfis %}
+                                    <option value="{{ p.id }}" {{ p.id in cfg.alerta_perfis ? 'selected' : '' }}>{{ p.nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-hint">Ctrl+clique para escolher mais de um.</div>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label" for="pp-email">E-mail da equipe</label>
+                            <input class="form-control" id="pp-email" name="email_equipe" value="{{ cfg.email_equipe }}"
+                                   placeholder="expedicao@[dominio]" {{ bloq }}>
+                            <div class="form-hint">Mais de um: separe por vírgula.</div>
+                        </div>
+                    </div>
+                    <div class="card-footer d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-outline-secondary" disabled
+                                title="Chega com os alertas (Bloco 7) e o WhatsApp (Bloco 9)">Enviar notificação de teste</button>
+                        {% if tela.pode_alterar %}
+                            <button type="submit" class="btn btn-primary" name="salvar" value="1">Salvar</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-6">
+                {# ---- Frequência ---- #}
+                <div class="card pp-card mb-3">
+                    <div class="card-header"><h3 class="card-title">Frequência de consulta</h3></div>
+                    <div class="card-body pb-0">
+                        <p class="text-secondary small mb-2">
+                            Ação automática do GLPI <code>PostalplusConsulta</code> (modo CLI, Bloco 4). Os objetos são consultados
+                            em lote, com intervalo conforme a situação.
+                        </p>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table pp-tabela-freq">
+                            <thead><tr><th>Situação do objeto</th><th class="w-50">Consultar a cada</th></tr></thead>
+                            <tbody>
+                            {% for chave, rotulo in tela.chaves_freq %}
+                                <tr>
+                                    <td>{{ rotulo }}</td>
+                                    <td>
+                                        <select class="form-select" name="{{ chave }}" aria-label="{{ rotulo }}" {{ bloq }}>
+                                            {% for min, txt in tela.frequencias %}
+                                                <option value="{{ min }}" {{ cfg.freq[chave] == min ? 'selected' : '' }}>{{ txt }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            <tr><td>Entregue ou devolvido</td><td class="fw-semibold">Encerra o acompanhamento</td></tr>
+                            <tr>
+                                <td>Janela de consulta</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input class="form-control" type="time" name="janela_inicio" value="{{ cfg.janela_inicio }}" {{ bloq }}>
+                                        <span>às</span>
+                                        <input class="form-control" type="time" name="janela_fim" value="{{ cfg.janela_fim }}" {{ bloq }}>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if tela.pode_alterar %}
+                        <div class="card-footer d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary" name="salvar" value="1">Salvar</button>
+                        </div>
+                    {% endif %}
+                </div>
+
+                {# ---- Últimas execuções ---- #}
+                <div class="card pp-card mb-3">
+                    <div class="card-header"><h3 class="card-title">Últimas execuções</h3></div>
+                    <div class="table-responsive pp-rolagem">
+                        <table class="table table-vcenter card-table">
+                            <thead><tr><th>Horário</th><th>Objetos</th><th>Novos eventos</th><th>Erros</th><th>Resultado</th></tr></thead>
+                            <tbody>
+                            {% for e in tela.execucoes %}
+                                <tr>
+                                    <td class="font-monospace">{{ e.horario|date('d/m H:i') }}</td>
+                                    <td>{{ e.objetos }}</td>
+                                    <td>{{ e.novos }}</td>
+                                    <td>{{ e.erros }}</td>
+                                    <td class="{{ e.erros > 0 ? 'text-orange' : 'text-green' }}">{{ e.resultado }}</td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="5" class="text-secondary text-center py-4" data-pp-execucoes="vazio">
+                                    Nenhuma execução ainda. A consulta automática entra no Bloco 4.
+                                </td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {# ---- Diagnóstico ---- #}
+                <div class="card pp-card">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <h3 class="card-title mb-0">Instalação</h3>
+                        <span class="badge bg-blue-lt">v{{ tela.versao }}</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-vcenter card-table">
+                            <tbody>
+                            {% for t in tela.tabelas %}
+                                <tr>
+                                    <td><code>{{ t.nome }}</code></td>
+                                    <td>{% if t.existe %}<span class="badge bg-green-lt">criada</span>{% else %}<span class="badge bg-red-lt">ausente</span>{% endif %}</td>
+                                    <td class="text-end">{{ t.linhas }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<script src="{{ nav.web }}/js/config.js?v={{ nav.v }}"></script>
