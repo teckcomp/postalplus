@@ -56,8 +56,9 @@
 .pp-tabela td { vertical-align: top; }
 .pp-codigo { font-family: var(--tblr-font-monospace, monospace); font-weight: 700; }
 .pp-sub { font-size: .78rem; color: var(--tblr-secondary, #6c7a91); }
-.pp-alerta-atencao { color: #946200; font-weight: 600; }
-.pp-alerta-critico { color: #b42318; font-weight: 600; }
+/* Seletor com td: precisa vencer a cor de célula do Tabler (.table>:not(caption)>*>*). */
+.pp-tabela td.pp-alerta-atencao { color: #946200; font-weight: 600; }
+.pp-tabela td.pp-alerta-critico { color: #b42318; font-weight: 600; }
 .pp-busca { min-width: 18rem; }
 
 /* ---------- Toasts (demonstração) ---------- */
@@ -99,6 +100,7 @@
 .pp-lote-lista { border: 1px solid var(--tblr-border-color, #dce1e7); border-radius: 8px; max-height: 18rem; overflow-y: auto; }
 .pp-lote-lista > div { display: flex; justify-content: space-between; align-items: center; padding: .45rem .8rem; font-family: var(--tblr-font-monospace, monospace); }
 .pp-lote-lista > div + div { border-top: 1px solid var(--tblr-border-color, #dce1e7); }
+.pp-lote-lista .badge { font-family: var(--tblr-font-sans-serif, inherit); }
 .pp-valida-ok { color: #1a7f5a; }
 .pp-valida-erro { color: #b42318; }
 

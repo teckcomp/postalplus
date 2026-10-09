@@ -39,8 +39,10 @@ class Menu extends CommonGLPI
     public static function telas(): array
     {
         return [
-            'painel' => ['Painel', 'painel.php', 'ti ti-layout-dashboard', PerfilDireitos::RIGHT_OBJETO, READ],
-            'config' => ['Configuração', 'config.php', 'ti ti-settings', PerfilDireitos::RIGHT_CONFIG, READ],
+            'painel'    => ['Painel', 'painel.php', 'ti ti-layout-dashboard', PerfilDireitos::RIGHT_OBJETO, READ],
+            'adicionar' => ['Adicionar objetos', 'adicionar.php', 'ti ti-square-plus', PerfilDireitos::RIGHT_OBJETO, CREATE],
+            'regras'    => ['Regras de alerta', 'regras.php', 'ti ti-bell-cog', PerfilDireitos::RIGHT_CONFIG, READ],
+            'config'    => ['Configuração', 'config.php', 'ti ti-settings', PerfilDireitos::RIGHT_CONFIG, READ],
         ];
     }
 

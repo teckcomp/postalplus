@@ -1,0 +1,117 @@
+{# Postal+ — Regras de alerta (funcional). Variáveis: nav, tela #}
+{% set bloq = tela.pode_alterar ? '' : 'disabled' %}
+<div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="regras">
+    {% include '@postalplus/_nav.html.twig' with {
+        nav: nav,
+        titulo: 'Regras de alerta',
+        subtitulo: 'Avaliadas a cada consulta à API. Cada regra escolhe por onde avisar e se abre chamado no GLPI.'
+    } only %}
+
+    <div class="alert alert-info py-2">
+        <div><i class="ti ti-info-circle me-1"></i>Os ajustes já ficam gravados. Os alertas passam a disparar quando o motor de regras entrar (Bloco 7).</div>
+    </div>
+
+    <form method="post" action="{{ nav.web }}/front/regras.php" id="pp-form-regras">
+        <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-3">
+            <div class="col-xl-8">
+                {% for r in tela.regras %}
+                    {% set n = 'regra[' ~ r.chave ~ ']' %}
+                    <div class="card pp-card pp-regra mb-3 {{ r.is_active ? '' : 'inativa' }}" data-pp-regra="{{ r.chave }}">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start gap-2 pp-regra-topo">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h3 class="card-title mb-0">{{ r.titulo }}</h3>
+                                        <span class="pp-regra-tag pp-tag-{{ r.cor }}">{{ r.tag }}</span>
+                                    </div>
+                                    <div class="text-secondary small mt-1">{{ r.desc }}</div>
+                                </div>
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" name="{{ n }}[is_active]" value="1" data-pp-ativa {{ r.is_active ? 'checked' : '' }} {{ bloq }}>
+                                    <span class="form-check-label">Ativa</span>
+                                </label>
+                            </div>
+
+                            <div class="pp-regra-corpo">
+                                {% if r.param %}
+                                    <div class="d-flex align-items-center flex-wrap gap-2 mt-3">
+                                        <span>{{ r.param.antes }}</span>
+                                        <input class="form-control pp-param" type="number" name="{{ n }}[parametro]" value="{{ r.parametro }}"
+                                               min="{{ r.param.min }}" max="{{ r.param.max }}" required {{ bloq }}>
+                                        <span>{{ r.param.depois }}</span>
+                                    </div>
+                                {% endif %}
+
+                                {% if r.chave == 'eventos_criticos' %}
+                                    <div class="mt-3">
+                                        {% for slug, rotulo in tela.eventos %}
+                                            <label class="pp-chip">
+                                                <input type="checkbox" name="{{ n }}[eventos][]" value="{{ slug }}" {{ slug in r.eventos ? 'checked' : '' }} {{ bloq }}>{{ rotulo }}
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+
+                                <div class="d-flex align-items-center flex-wrap mt-3">
+                                    <span class="text-secondary small me-2 mb-1">Avisar por:</span>
+                                    {% for canal, rotulo in {'canal_tela': 'Tela', 'canal_email': 'E-mail equipe', 'canal_whatsapp': 'WhatsApp destinatário', 'canal_chamado': r.chamado} %}
+                                        <label class="pp-canal">
+                                            <input class="form-check-input" type="checkbox" name="{{ n }}[{{ canal }}]" value="1" {{ attribute(r, canal) ? 'checked' : '' }} {{ bloq }}>{{ rotulo }}
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="col-xl-4">
+                <div class="card pp-card mb-3">
+                    <div class="card-header"><h3 class="card-title">Chamado automático</h3></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label" for="pp-cat">Categoria</label>
+                            <select class="form-select" id="pp-cat" name="chamado_itilcategories_id" {{ bloq }}>
+                                <option value="0">— sem categoria —</option>
+                                {% for c in tela.categorias %}<option value="{{ c.id }}" {{ c.id == tela.chamado.categoria ? 'selected' : '' }}>{{ c.nome }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="pp-grp">Grupo atribuído</label>
+                            <select class="form-select" id="pp-grp" name="chamado_groups_id" {{ bloq }}>
+                                <option value="0">— nenhum —</option>
+                                {% for g in tela.grupos %}<option value="{{ g.id }}" {{ g.id == tela.chamado.grupo ? 'selected' : '' }}>{{ g.nome }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="pp-prio">Prioridade</label>
+                            <select class="form-select" id="pp-prio" name="chamado_prioridade" {{ bloq }}>
+                                {% for v, rot in tela.prioridades %}<option value="{{ v }}" {{ v == tela.chamado.prioridade ? 'selected' : '' }}>{{ rot }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="text-secondary small">Se o objeto já tem chamado vinculado, o alerta vira acompanhamento nele em vez de abrir outro.</div>
+                    </div>
+                </div>
+
+                <div class="card pp-card mb-3">
+                    <div class="card-header"><h3 class="card-title">Mensagem WhatsApp · aguardando retirada</h3></div>
+                    <div class="card-body">
+                        <div class="pp-whats mb-2">
+                            Olá <code>{nome}</code>! Sua encomenda <code>{codigo}</code> está aguardando retirada em <code>{local}</code>
+                            até <code>{data_limite}</code>. Leve um documento com foto e o código do objeto.
+                        </div>
+                        <div class="text-secondary small mb-2">Variáveis: {nome}, {codigo}, {local}, {data_limite}, {status}. Enviada pelo webhook do n8n (Configuração).</div>
+                        <button type="button" class="btn btn-outline-secondary" disabled title="Modelos editáveis chegam no Bloco 9">Editar modelos</button>
+                    </div>
+                </div>
+
+                {% if tela.pode_alterar %}
+                    <button type="submit" class="btn btn-primary w-100" name="salvar" value="1">Salvar regras</button>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+</div>
+<script src="{{ nav.web }}/js/regras.js?v={{ nav.v }}"></script>

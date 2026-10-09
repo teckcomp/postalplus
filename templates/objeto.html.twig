@@ -1,0 +1,138 @@
+{# Postal+ — Detalhe do objeto (Bloco 1b: demonstração). Variáveis: nav, tela #}
+{% set o = tela.objeto %}
+<div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="objeto">
+    <a href="{{ tela.url_painel }}" class="d-inline-block mb-2"><i class="ti ti-arrow-left me-1"></i>Voltar ao painel</a>
+
+    {% if o is null %}
+        <div class="alert alert-warning" data-pp-objeto="nao-encontrado">
+            <div>Objeto <strong>{{ tela.codigo ?: '(sem código)' }}</strong> não encontrado.
+            Nesta versão de demonstração só existem os 9 objetos do painel.</div>
+        </div>
+    {% else %}
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+            <h1 class="pp-titulo pp-codigo mb-0" data-pp-objeto="{{ o.codigo }}">{{ o.codigo }}</h1>
+            <span class="pp-st pp-st-{{ o.situacao }}">{{ o.rotulo }}</span>
+        </div>
+        <div class="text-secondary mb-3">{{ o.servico }} · postado em {{ o.postagem }}</div>
+
+        {% include '@postalplus/_demo.html.twig' with {
+            texto: 'Linha do tempo e alertas do mockup. Dados reais no Bloco 6; ações nos Blocos 3, 8 e 9.'
+        } only %}
+
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <button class="btn btn-outline-secondary" disabled title="Bloco 3"><i class="ti ti-refresh me-1"></i>Consultar agora</button>
+            <button class="btn btn-outline-secondary" disabled title="Bloco 8">Registrar reclamação nos Correios</button>
+            <button class="btn btn-primary" disabled title="Bloco 9"><i class="ti ti-brand-whatsapp me-1"></i>Avisar destinatário (WhatsApp)</button>
+        </div>
+
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#pp-aba-rastreio" role="tab">Rastreamento <span class="badge bg-secondary-lt ms-1">{{ o.eventos|length }}</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-aba-alertas" role="tab">Alertas <span class="badge bg-secondary-lt ms-1">{{ o.alertas|length }}</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-aba-chamados" role="tab">Chamados <span class="badge bg-secondary-lt ms-1">{{ o.chamado ? 1 : 0 }}</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-aba-docs" role="tab">Documentos</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-aba-hist" role="tab">Histórico</a></li>
+        </ul>
+
+        <div class="row g-3">
+            <div class="col-xl-8">
+                <div class="tab-content">
+                    <div class="tab-pane active show" id="pp-aba-rastreio" role="tabpanel">
+                        <div class="card pp-card">
+                            <div class="card-header"><h3 class="card-title">Eventos do rastreio <span class="text-secondary fw-normal">· fonte: API Rastro (SRO)</span></h3></div>
+                            <div class="card-body">
+                                <ul class="pp-timeline">
+                                    {% for e in o.eventos %}
+                                        <li>
+                                            <div class="pp-tl-data">{{ e.data }}<small>{{ e.hora }}</small></div>
+                                            <div class="pp-cor-{{ e.cor }}"><div class="pp-tl-ponto {{ e.atual is defined and e.atual ? 'atual' : '' }}"></div></div>
+                                            <div>
+                                                <div class="pp-tl-titulo">{{ e.titulo }}</div>
+                                                <div class="pp-sub">{{ e.local }}</div>
+                                                {% if e.nota is defined %}<div class="pp-tl-nota">{{ e.nota }}</div>{% endif %}
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="pp-aba-alertas" role="tabpanel">
+                        <div class="card pp-card"><div class="card-body">
+                            {% for a in o.alertas %}
+                                <div class="py-2 {{ not loop.last ? 'border-bottom' : '' }}"><strong>{{ a.quando }}</strong> · {{ a.titulo }}<div class="pp-sub">{{ a.canais }}</div></div>
+                            {% else %}
+                                <div class="text-secondary">Nenhum alerta disparado para este objeto.</div>
+                            {% endfor %}
+                        </div></div>
+                    </div>
+                    <div class="tab-pane" id="pp-aba-chamados" role="tabpanel">
+                        <div class="card pp-card"><div class="card-body">
+                            {% if o.chamado %}
+                                <a href="{{ tela.url_ticket ~ o.chamado }}">#{{ o.chamado }}{{ o.chamado_titulo ? ' · ' ~ o.chamado_titulo : '' }}</a>
+                            {% else %}
+                                <div class="text-secondary">Nenhum chamado vinculado.</div>
+                            {% endif %}
+                        </div></div>
+                    </div>
+                    <div class="tab-pane" id="pp-aba-docs" role="tabpanel">
+                        <div class="card pp-card"><div class="card-body text-secondary">Documentos do envio (etiqueta, nota) — previsto para depois do Bloco 6.</div></div>
+                    </div>
+                    <div class="tab-pane" id="pp-aba-hist" role="tabpanel">
+                        <div class="card pp-card"><div class="card-body text-secondary">Histórico de alterações do objeto — Bloco 6.</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-4">
+                {% if o.prazo_retirada %}
+                    {% set p = o.prazo_retirada %}
+                    <div class="pp-prazo mb-3" data-pp-prazo="{{ p.restantes }}">
+                        <div class="pp-prazo-rotulo">Prazo de retirada</div>
+                        <div><span class="pp-prazo-num">{{ p.restantes }} dias</span> <span class="text-secondary">restantes</span></div>
+                        <div class="small mb-2">Chegou à agência em {{ p.chegou }} · retirar até <strong>{{ p.ate }}</strong>. Depois disso o objeto volta ao remetente.</div>
+                        <div class="progress"><div class="progress-bar" style="width: {{ (p.decorridos * 100 / p.total)|round }}%"></div></div>
+                        <div class="pp-sub mt-1">{{ p.decorridos }} de {{ p.total }} dias decorridos</div>
+                    </div>
+                {% endif %}
+
+                <div class="card pp-card mb-3">
+                    <div class="card-header"><h3 class="card-title">Destinatário</h3></div>
+                    <div class="card-body">
+                        <dl class="row mb-0 pp-dados">
+                            <dt class="col-5">Nome</dt><dd class="col-7">{{ o.destinatario }}</dd>
+                            <dt class="col-5">WhatsApp</dt><dd class="col-7">{{ o.whatsapp ?: '—' }}</dd>
+                            <dt class="col-5">Cidade</dt><dd class="col-7">{{ o.cidade }}</dd>
+                            <dt class="col-5">Retirada</dt><dd class="col-7">{{ o.retirada ?: '—' }}</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="card pp-card mb-3">
+                    <div class="card-header"><h3 class="card-title">Envio</h3></div>
+                    <div class="card-body">
+                        <dl class="row mb-0 pp-dados">
+                            <dt class="col-5">Serviço</dt><dd class="col-7">{{ o.servico }}</dd>
+                            <dt class="col-5">Postagem</dt><dd class="col-7">{{ o.postagem }} · {{ o.postagem_local }}</dd>
+                            <dt class="col-5">Prazo previsto</dt><dd class="col-7">{{ o.previsto }}</dd>
+                            <dt class="col-5">Entidade</dt><dd class="col-7">{{ tela.entidade }}</dd>
+                            <dt class="col-5">Chamado</dt>
+                            <dd class="col-7">{% if o.chamado %}<a href="{{ tela.url_ticket ~ o.chamado }}">#{{ o.chamado }}{{ o.chamado_titulo ? ' · ' ~ o.chamado_titulo : '' }}</a>{% else %}—{% endif %}</dd>
+                            <dt class="col-5">Responsável</dt><dd class="col-7">{{ tela.responsavel }}</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                {% if o.alertas|length > 0 %}
+                    <div class="card pp-card">
+                        <div class="card-header"><h3 class="card-title">Alertas disparados</h3></div>
+                        <div class="card-body">
+                            {% for a in o.alertas %}
+                                <div class="py-2 {{ not loop.last ? 'border-bottom' : '' }}"><strong>{{ a.quando }}</strong> · {{ a.titulo }}<div class="pp-sub">{{ a.canais }}</div></div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>

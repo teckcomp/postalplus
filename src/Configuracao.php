@@ -237,25 +237,41 @@ class Configuracao
         ]);
     }
 
-    /** Valores padrão das chaves de chamado automático (editadas na tela Regras). */
-    public static function salvarChamado(array $post): array
+    /**
+     * Valida o cartão "Chamado automático" da tela Regras (categoria, grupo, prioridade).
+     *
+     * @return list<string>
+     */
+    public static function validarChamado(array $post): array
     {
+        /** @var \DBmysql $DB */
+        global $DB;
+
         $erros = [];
-        $prio  = (int) ($post['chamado_prioridade'] ?? 4);
+        $prio  = (int) ($post['chamado_prioridade'] ?? 0);
         if ($prio < 1 || $prio > 6) {
-            $erros[] = 'Prioridade inválida.';
+            $erros[] = 'Chamado automático: prioridade inválida.';
         }
-        if ($erros !== []) {
-            return $erros;
+        $cat = (int) ($post['chamado_itilcategories_id'] ?? 0);
+        if ($cat > 0 && count($DB->request(['SELECT' => 'id', 'FROM' => 'glpi_itilcategories', 'WHERE' => ['id' => $cat]])) === 0) {
+            $erros[] = 'Chamado automático: categoria não encontrada.';
+        }
+        $grp = (int) ($post['chamado_groups_id'] ?? 0);
+        if ($grp > 0 && count($DB->request(['SELECT' => 'id', 'FROM' => 'glpi_groups', 'WHERE' => ['id' => $grp]])) === 0) {
+            $erros[] = 'Chamado automático: grupo não encontrado.';
         }
 
+        return $erros;
+    }
+
+    /** Grava o padrão do chamado automático (chamar só depois de validarChamado). */
+    public static function salvarChamado(array $post): void
+    {
         Config::setConfigurationValues(Install::CONFIG_CONTEXT, [
             'chamado_itilcategories_id' => max(0, (int) ($post['chamado_itilcategories_id'] ?? 0)),
             'chamado_groups_id'         => max(0, (int) ($post['chamado_groups_id'] ?? 0)),
-            'chamado_prioridade'        => $prio,
+            'chamado_prioridade'        => (int) ($post['chamado_prioridade'] ?? 4),
         ]);
-
-        return [];
     }
 
     private static function horaValida(string $h): bool

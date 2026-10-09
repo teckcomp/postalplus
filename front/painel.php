@@ -1,56 +1,45 @@
 <?php
 
 /**
- * Postal+ — Painel (Bloco 0: página provisória com diagnóstico da instalação).
+ * Postal+ — Painel de rastreio.
  *
- * GLPI 11: este script roda dentro do kernel já iniciado (não incluir inc/includes.php).
+ * Bloco 1b: casca navegável com DADOS DE DEMONSTRAÇÃO (Demo). No Bloco 5 passa a ler
+ * glpi_plugin_postalplus_objetos. O diagnóstico da instalação foi para a tela de Configuração.
  *
  * @copyright Teckcomp
  * @license   GPLv3+
  */
 
 use Glpi\Application\View\TemplateRenderer;
-use GlpiPlugin\Postalplus\Install;
+use GlpiPlugin\Postalplus\Demo;
 use GlpiPlugin\Postalplus\Menu;
 use GlpiPlugin\Postalplus\PerfilDireitos;
+use GlpiPlugin\Postalplus\Situacao;
 
 Session::checkRight(PerfilDireitos::RIGHT_OBJETO, READ);
 
-/** @var \DBmysql $DB */
-global $DB;
-
-$tabelas = [];
-foreach (Install::TABELAS as $tabela) {
-    $existe = $DB->tableExists($tabela);
-    $linhas = 0;
-    if ($existe) {
-        $row    = $DB->request(['COUNT' => 'cpt', 'FROM' => $tabela])->current();
-        $linhas = (int) ($row['cpt'] ?? 0);
-    }
-    $tabelas[] = ['nome' => $tabela, 'existe' => $existe, 'linhas' => $linhas];
+$nav     = Menu::nav('painel');
+$objetos = Demo::objetos();
+foreach ($objetos as &$o) {
+    $o['card'] = Situacao::cardDe($o['situacao']);
+    unset($o['eventos'], $o['alertas']);
 }
+unset($o);
 
-$config = Config::getConfigurationValues(Install::CONFIG_CONTEXT);
-
-$info = [
-    'versao'      => PLUGIN_POSTALPLUS_VERSION,
-    'tabelas'     => $tabelas,
-    'tabelas_ok'  => count(array_filter($tabelas, static fn($t) => $t['existe'])) === count($tabelas),
-    'ambiente'    => ($config['ambiente'] ?? '') === 'producao' ? 'Produção' : 'Homologação (cwshom)',
-    'config_qtd'  => count($config),
-    'credenciais' => ($config['cws_usuario'] ?? '') !== '' && ($config['cws_codigo_acesso'] ?? '') !== '',
-    'direitos'    => [
-        'objeto_ler'     => Session::haveRight(PerfilDireitos::RIGHT_OBJETO, READ),
-        'objeto_criar'   => Session::haveRight(PerfilDireitos::RIGHT_OBJETO, CREATE),
-        'config_ler'     => Session::haveRight(PerfilDireitos::RIGHT_CONFIG, READ),
-        'config_alterar' => Session::haveRight(PerfilDireitos::RIGHT_CONFIG, UPDATE),
-    ],
-];
-
-Html::header('Postal+', '', 'tools', Menu::class, 'painel');
+Html::header('Postal+ · Painel', '', 'tools', Menu::class, 'painel');
 
 TemplateRenderer::getInstance()->display('@postalplus/painel.html.twig', [
-    'info' => $info,
+    'nav'  => $nav,
+    'tela' => [
+        'objetos'    => $objetos,
+        'cards'      => Situacao::cards(),
+        'totais'     => Situacao::contar($objetos),
+        'toasts'     => Demo::toasts(),
+        'pode_criar' => Session::haveRight(PerfilDireitos::RIGHT_OBJETO, CREATE),
+        'url_objeto' => $nav['web'] . '/front/objeto.php?codigo=',
+        'url_add'    => $nav['web'] . '/front/adicionar.php',
+        'url_ticket' => Ticket::getFormURL() . '?id=',
+    ],
 ]);
 
 Html::footer();

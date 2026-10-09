@@ -1,0 +1,125 @@
+{# Postal+ — Adicionar objetos (Bloco 1b: valida no navegador, não grava). Variáveis: nav, tela #}
+<div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="adicionar">
+    {% include '@postalplus/_nav.html.twig' with {
+        nav: nav,
+        titulo: 'Adicionar objetos',
+        subtitulo: 'Cadastre um envio ou importe vários de uma vez. Cada objeto é consultado na API assim que é salvo.'
+    } only %}
+
+    {% include '@postalplus/_demo.html.twig' with {
+        texto: 'A validação dos códigos já funciona, mas nada é gravado ainda: salvar chega no Bloco 2 e a importação em lote no Bloco 10.'
+    } only %}
+
+    <script type="application/json" id="pp-codigos-existentes">{{ tela.codigos_json|raw }}</script>
+
+    <div class="row g-3">
+        <div class="col-xl-6">
+            <div class="card pp-card">
+                <div class="card-header"><h3 class="card-title">Objeto individual</h3></div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label required" for="pp-codigo">Código de rastreio</label>
+                        <input class="form-control font-monospace text-uppercase" id="pp-codigo" maxlength="13" placeholder="AA123456789BR" autocomplete="off">
+                        <div class="small mt-1" id="pp-codigo-status" aria-live="polite"></div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Serviço</label>
+                            <select class="form-select">{% for s in tela.servicos %}<option>{{ s }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Data de postagem</label>
+                            <input class="form-control" type="date">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Destinatário</label>
+                            <input class="form-control" placeholder="Nome de quem recebe">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">WhatsApp do destinatário</label>
+                            <input class="form-control" placeholder="(00) 00000-0000" inputmode="tel">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">E-mail do destinatário</label>
+                            <input class="form-control" type="email" placeholder="opcional">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cidade / UF</label>
+                            <input class="form-control" placeholder="Ex.: Londrina/PR">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Chamado vinculado</label>
+                            <input class="form-control" inputmode="numeric" placeholder="Nº do chamado (opcional)">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Entidade</label>
+                            <select class="form-select">
+                                {% for e in tela.entidades %}<option value="{{ e.id }}" {{ e.id == tela.entidade_atual ? 'selected' : '' }}>{{ e.nome }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Responsável</label>
+                            <select class="form-select"><option value="{{ tela.usuario.id }}">{{ tela.usuario.nome }}</option></select>
+                        </div>
+                    </div>
+                    <label class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" checked>
+                        <span class="form-check-label">Avisar o destinatário por WhatsApp nos eventos-chave (saiu para entrega, aguardando retirada)</span>
+                    </label>
+                    <label class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" checked>
+                        <span class="form-check-label">Abrir chamado automaticamente se houver alerta crítico</span>
+                    </label>
+                </div>
+                <div class="card-footer d-flex justify-content-end gap-2">
+                    <a class="btn btn-outline-secondary" href="{{ nav.web }}/front/painel.php">Cancelar</a>
+                    <button type="button" class="btn btn-primary" disabled title="Gravação chega no Bloco 2">Salvar e consultar agora</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6">
+            <div class="card pp-card">
+                <div class="card-header"><h3 class="card-title">Importação em lote</h3></div>
+                <div class="card-body">
+                    <ul class="nav nav-pills mb-3" role="tablist">
+                        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#pp-lote-colar" role="tab">Colar códigos</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-lote-csv" role="tab">Arquivo CSV</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-lote-ro" role="tab">Relatório de Objetos (RO)</a></li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane active show" id="pp-lote-colar" role="tabpanel">
+                            <label class="form-label" for="pp-lote">Um código por linha (ou separados por vírgula)</label>
+                            <textarea class="form-control font-monospace" id="pp-lote" rows="6" placeholder="QP303012777BR&#10;OY994410382BR"></textarea>
+                            <div class="d-flex flex-wrap gap-2 my-2" id="pp-lote-resumo"></div>
+                            <div class="pp-lote-lista d-none" id="pp-lote-lista"></div>
+                        </div>
+                        <div class="tab-pane" id="pp-lote-csv" role="tabpanel">
+                            <div class="text-secondary">Importar planilha CSV (código, destinatário, WhatsApp, cidade, chamado) — Bloco 10.</div>
+                        </div>
+                        <div class="tab-pane" id="pp-lote-ro" role="tabpanel">
+                            <div class="text-secondary">Importar o Relatório de Objetos exportado do contrato — Bloco 10.</div>
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-6">
+                            <label class="form-label">Serviço padrão</label>
+                            <select class="form-select"><option>Detectar pela API</option>{% for s in tela.servicos %}<option>{{ s }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Responsável</label>
+                            <select class="form-select">
+                                <option value="u{{ tela.usuario.id }}">{{ tela.usuario.nome }}</option>
+                                {% for g in tela.grupos %}<option value="g{{ g.id }}">Grupo {{ g.nome }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex justify-content-end">
+                    <button type="button" class="btn btn-primary" id="pp-importar" disabled title="Importação chega no Bloco 10">Importar 0 objeto(s) válido(s)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="{{ nav.web }}/js/adicionar.js?v={{ nav.v }}"></script>
