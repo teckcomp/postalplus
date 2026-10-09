@@ -3,7 +3,7 @@
 /**
  * Postal+ — dados de DEMONSTRAÇÃO das telas do Bloco 1b (os 9 objetos do mockup).
  *
- * Temporário: o Painel deixou de usá-la no Bloco 5; o Detalhe (códigos da demo) sai no Bloco 6.
+ * SEM USO desde o Bloco 6 (Painel saiu no Bloco 5, Detalhe no Bloco 6). Será apagada no Bloco 11.
  * Nada aqui é gravado no banco.
  *
  * @copyright Teckcomp

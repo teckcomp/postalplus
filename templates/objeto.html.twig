@@ -1,41 +1,49 @@
-{# Postal+ — Detalhe do objeto (Bloco 3: real com eventos da API ou demonstração). Variáveis: nav, tela #}
+{# Postal+ — Detalhe do objeto (Bloco 6: só dados reais). Variáveis: nav, tela #}
 {% set o = tela.objeto %}
 <div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="objeto">
     <a href="{{ tela.url_painel }}" class="d-inline-block mb-2"><i class="ti ti-arrow-left me-1"></i>Voltar ao painel</a>
 
     {% if o is null %}
-        <div class="alert alert-warning" data-pp-objeto="nao-encontrado">
-            <div>Objeto <strong>{{ tela.codigo ?: '(sem código)' }}</strong> não encontrado
-            (ou está numa entidade que você não acessa).</div>
+        <div class="card pp-card pp-nao-encontrado" data-pp-objeto="nao-encontrado">
+            <div class="card-body text-center py-5">
+                <div class="pp-nao-encontrado-icone mb-3"><i class="ti ti-package-off"></i></div>
+                <h1 class="pp-titulo mb-2">Objeto não encontrado</h1>
+                <p class="text-secondary mb-4">
+                    {% if tela.codigo == '' %}
+                        Nenhum código de rastreio foi informado.
+                    {% elseif not tela.codigo_valido %}
+                        <strong class="pp-codigo">{{ tela.codigo }}</strong> não é um código de rastreio válido (2 letras, 9 dígitos e 2 letras).
+                    {% else %}
+                        <strong class="pp-codigo">{{ tela.codigo }}</strong> não está cadastrado no Postal+ ou pertence a uma entidade que você não acessa.
+                    {% endif %}
+                </p>
+                <a href="{{ tela.url_painel }}" class="btn btn-primary"><i class="ti ti-layout-dashboard me-1"></i>Ir para o painel</a>
+            </div>
         </div>
     {% else %}
+        {% set ab = tela.abas %}
+        {% set docs = ab.documentos %}
         <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
             <h1 class="pp-titulo pp-codigo mb-0" data-pp-objeto="{{ o.codigo }}">{{ o.codigo }}</h1>
             <span class="pp-st pp-st-{{ o.situacao }}">{{ o.rotulo }}</span>
         </div>
-        <div class="text-secondary mb-3">{{ o.servico }} · postado em {{ o.postagem }}{% if tela.real %} · {{ o.consultado ? 'última consulta à API em ' ~ o.ultima_consulta : 'ainda não consultado na API' }}{% if o.encerrado %} · <span data-pp-agenda="encerrado">acompanhamento encerrado</span>{% elseif o.proxima_consulta %} · <span data-pp-agenda="proxima">próxima consulta automática em {{ o.proxima_consulta }}</span>{% endif %}{% endif %}</div>
+        <div class="text-secondary mb-3">{{ o.servico }} · postado em {{ o.postagem }} · {{ o.consultado ? 'última consulta à API em ' ~ o.ultima_consulta : 'ainda não consultado na API' }}{% if o.encerrado %} · <span data-pp-agenda="encerrado">acompanhamento encerrado</span>{% elseif o.proxima_consulta %} · <span data-pp-agenda="proxima">próxima consulta automática em {{ o.proxima_consulta }}</span>{% endif %}</div>
 
-        {% if tela.real %}
-            {% if o.erro_consulta %}
-                <div class="alert alert-warning" data-pp-erro-consulta>
-                    <div><strong>Última consulta sem sucesso:</strong> {{ o.erro_consulta }}</div>
-                </div>
-            {% endif %}
-        {% else %}
-            {% include '@postalplus/_demo.html.twig' with {
-                texto: 'Linha do tempo e alertas do mockup. Objetos cadastrados já mostram o rastreio real; reclamação e WhatsApp nos Blocos 8 e 9.'
-            } only %}
+        {% if o.erro_consulta %}
+            <div class="alert alert-warning" data-pp-erro-consulta>
+                <div><strong>Última consulta sem sucesso:</strong> {{ o.erro_consulta }}</div>
+            </div>
         {% endif %}
 
-        <div class="d-flex flex-wrap gap-2 mb-3">
-            {% if tela.real %}
-                <button type="button" class="btn btn-outline-secondary" data-pp-consultar data-codigo="{{ o.codigo }}"
-                        data-url="{{ tela.url_consultar }}" data-pp-resultado="pp-consulta-resultado"><i class="ti ti-refresh me-1"></i>Consultar agora</button>
-            {% else %}
-                <button class="btn btn-outline-secondary" disabled title="Objeto de demonstração"><i class="ti ti-refresh me-1"></i>Consultar agora</button>
-            {% endif %}
-            <button class="btn btn-outline-secondary" disabled title="Bloco 8">Registrar reclamação nos Correios</button>
-            <button class="btn btn-primary" disabled title="Bloco 9"><i class="ti ti-brand-whatsapp me-1"></i>Avisar destinatário (WhatsApp)</button>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <button type="button" class="btn btn-outline-secondary" data-pp-consultar data-codigo="{{ o.codigo }}"
+                    data-url="{{ tela.url_consultar }}" data-pp-resultado="pp-consulta-resultado"><i class="ti ti-refresh me-1"></i>Consultar agora</button>
+            <span class="d-inline-block" tabindex="0" title="Disponível no Bloco 8" data-pp-em-breve="8">
+                <button class="btn btn-outline-secondary" disabled>Registrar reclamação nos Correios</button>
+            </span>
+            <span class="d-inline-block" tabindex="0" title="Disponível no Bloco 9" data-pp-em-breve="9">
+                <button class="btn btn-primary" disabled><i class="ti ti-brand-whatsapp me-1"></i>Avisar destinatário (WhatsApp)</button>
+            </span>
             {% if tela.pode_excluir %}
                 <form method="post" action="{{ tela.url_self }}" class="ms-auto" data-pp-excluir
                       onsubmit="return confirm('Excluir o objeto {{ o.codigo }}? Eventos e alertas dele também são apagados.');">
@@ -45,32 +53,34 @@
                 </form>
             {% endif %}
         </div>
+        <div class="pp-sub mb-3" data-pp-em-breve-nota>Reclamação nos Correios e aviso por WhatsApp chegam nos Blocos 8 e 9.</div>
 
         <div id="pp-consulta-resultado" class="mb-3" aria-live="polite"></div>
 
         <ul class="nav nav-tabs mb-3" role="tablist">
-            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#pp-aba-rastreio" role="tab">Rastreamento <span class="badge bg-secondary-lt ms-1">{{ o.eventos|length }}</span></a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-aba-alertas" role="tab">Alertas <span class="badge bg-secondary-lt ms-1">{{ o.alertas|length }}</span></a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-aba-chamados" role="tab">Chamados <span class="badge bg-secondary-lt ms-1">{{ o.chamado ? 1 : 0 }}</span></a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-aba-docs" role="tab">Documentos</a></li>
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#pp-aba-rastreio" role="tab">Rastreamento <span class="badge bg-secondary-lt ms-1" data-pp-conta="rastreio">{{ o.eventos|length }}</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-aba-alertas" role="tab">Alertas <span class="badge bg-secondary-lt ms-1" data-pp-conta="alertas">{{ o.alertas|length }}</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-aba-chamados" role="tab">Chamados <span class="badge bg-secondary-lt ms-1" data-pp-conta="chamados">{{ ab.chamados|length }}</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-aba-docs" role="tab">Documentos <span class="badge bg-secondary-lt ms-1" data-pp-conta="documentos">{{ docs.itens|length }}</span></a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-aba-hist" role="tab">Histórico</a></li>
         </ul>
 
         <div class="row g-3">
             <div class="col-xl-8">
                 <div class="tab-content">
+                    {# ---- Rastreamento ---- #}
                     <div class="tab-pane active show" id="pp-aba-rastreio" role="tabpanel">
                         <div class="card pp-card">
                             <div class="card-header"><h3 class="card-title">Eventos do rastreio <span class="text-secondary fw-normal">· fonte: API Rastro (SRO)</span></h3></div>
                             <div class="card-body">
                                 {% if o.eventos|length == 0 %}
-                                    <div class="text-secondary" data-pp-sem-eventos>{{ tela.real and o.consultado ? 'Os Correios ainda não devolveram eventos para este objeto.' : 'Nenhum evento ainda — use “Consultar agora”.' }}</div>
+                                    <div class="text-secondary" data-pp-sem-eventos>{{ o.consultado ? 'Os Correios ainda não devolveram eventos para este objeto.' : 'Nenhum evento ainda — use “Consultar agora”.' }}</div>
                                 {% endif %}
                                 <ul class="pp-timeline">
                                     {% for e in o.eventos %}
                                         <li>
                                             <div class="pp-tl-data">{{ e.data }}<small>{{ e.hora }}</small></div>
-                                            <div class="pp-cor-{{ e.cor }}"><div class="pp-tl-ponto {{ e.atual is defined and e.atual ? 'atual' : '' }}"></div></div>
+                                            <div class="pp-cor-{{ e.cor }}"><div class="pp-tl-ponto {{ e.atual ? 'atual' : '' }}"></div></div>
                                             <div>
                                                 <div class="pp-tl-titulo">{{ e.titulo }}</div>
                                                 <div class="pp-sub">{{ e.local }}</div>
@@ -82,29 +92,132 @@
                             </div>
                         </div>
                     </div>
+
+                    {# ---- Alertas ---- #}
                     <div class="tab-pane" id="pp-aba-alertas" role="tabpanel">
-                        <div class="card pp-card"><div class="card-body">
-                            {% for a in o.alertas %}
-                                <div class="py-2 {{ not loop.last ? 'border-bottom' : '' }}"><strong>{{ a.quando }}</strong> · {{ a.titulo }}<div class="pp-sub">{{ a.canais }}</div></div>
+                        <div class="card pp-card">
+                            <div class="card-header"><h3 class="card-title">Alertas disparados</h3></div>
+                            {% if o.alertas|length == 0 %}
+                                <div class="card-body pp-vazio" data-pp-vazio="alertas">
+                                    <i class="ti ti-bell-off"></i>
+                                    <div>Nenhum alerta disparado para este objeto.</div>
+                                    <div class="pp-sub">Os alertas são gerados pelas Regras de alerta a cada consulta (a partir do Bloco 7).</div>
+                                </div>
                             {% else %}
-                                <div class="text-secondary">Nenhum alerta disparado para este objeto.</div>
-                            {% endfor %}
-                        </div></div>
-                    </div>
-                    <div class="tab-pane" id="pp-aba-chamados" role="tabpanel">
-                        <div class="card pp-card"><div class="card-body">
-                            {% if o.chamado %}
-                                <a href="{{ tela.url_ticket ~ o.chamado }}">#{{ o.chamado }}{{ o.chamado_titulo ? ' · ' ~ o.chamado_titulo : '' }}</a>
-                            {% else %}
-                                <div class="text-secondary">Nenhum chamado vinculado.</div>
+                                <div class="list-group list-group-flush" data-pp-lista="alertas">
+                                    {% for a in o.alertas %}
+                                        <div class="list-group-item pp-alerta pp-alerta-{{ a.nivel }}">
+                                            <div class="d-flex flex-wrap gap-2 align-items-baseline">
+                                                <strong>{{ a.titulo }}</strong>
+                                                <span class="pp-sub ms-auto">{{ a.quando }}</span>
+                                            </div>
+                                            {% if a.mensagem %}<div class="small">{{ a.mensagem }}</div>{% endif %}
+                                            <div class="pp-sub">{{ a.canais ?: 'sem canal' }}{% if a.chamado %} · <a href="{{ tela.url_ticket ~ a.chamado }}">chamado #{{ a.chamado }}</a>{% endif %}</div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
                             {% endif %}
-                        </div></div>
+                        </div>
                     </div>
+
+                    {# ---- Chamados ---- #}
+                    <div class="tab-pane" id="pp-aba-chamados" role="tabpanel">
+                        <div class="card pp-card">
+                            <div class="card-header"><h3 class="card-title">Chamados</h3></div>
+                            {% if ab.chamados|length == 0 %}
+                                <div class="card-body pp-vazio" data-pp-vazio="chamados">
+                                    <i class="ti ti-ticket-off"></i>
+                                    <div>Nenhum chamado vinculado a este objeto.</div>
+                                    <div class="pp-sub">O chamado é informado no cadastro; chamados abertos automaticamente por alerta aparecem aqui a partir do Bloco 8.</div>
+                                </div>
+                            {% else %}
+                                <div class="list-group list-group-flush" data-pp-lista="chamados">
+                                    {% for c in ab.chamados %}
+                                        <div class="list-group-item" data-pp-chamado="{{ c.id }}">
+                                            <div class="d-flex flex-wrap gap-2 align-items-baseline">
+                                                {% if c.visivel %}
+                                                    <a href="{{ tela.url_ticket ~ c.id }}" class="fw-bold">#{{ c.id }} · {{ c.titulo }}</a>
+                                                {% else %}
+                                                    <span class="fw-bold">#{{ c.id }}</span>
+                                                {% endif %}
+                                                <span class="badge {{ c.origem == 'vinculado' ? 'bg-blue-lt' : 'bg-orange-lt' }}">{{ c.origem == 'vinculado' ? 'vinculado no cadastro' : 'aberto por alerta' }}</span>
+                                                {% if c.visivel %}<span class="ms-auto small"><i class="{{ c.status_classe }} me-1"></i>{{ c.status }}</span>{% endif %}
+                                            </div>
+                                            <div class="pp-sub">
+                                                {% if not c.existe %}
+                                                    Chamado excluído ou inexistente no GLPI.
+                                                {% elseif not c.visivel %}
+                                                    Você não tem acesso a este chamado.
+                                                {% else %}
+                                                    Aberto em {{ c.aberto }} · última atualização {{ c.atualizado }}
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {# ---- Documentos (do chamado vinculado) ---- #}
                     <div class="tab-pane" id="pp-aba-docs" role="tabpanel">
-                        <div class="card pp-card"><div class="card-body text-secondary">Documentos do envio (etiqueta, nota) — previsto para depois do Bloco 6.</div></div>
+                        <div class="card pp-card">
+                            <div class="card-header"><h3 class="card-title">Documentos{% if docs.chamado %} <span class="text-secondary fw-normal">· do chamado #{{ docs.chamado }}</span>{% endif %}</h3></div>
+                            {% if docs.situacao == 'ok' and docs.itens|length > 0 %}
+                                <div class="table-responsive">
+                                    <table class="table table-vcenter card-table pp-tabela" data-pp-lista="documentos">
+                                        <thead><tr><th>Arquivo</th><th>Anexado em</th><th>Data</th><th>Por</th></tr></thead>
+                                        <tbody>
+                                            {% for d in docs.itens %}
+                                                <tr data-pp-documento="{{ d.id }}">
+                                                    <td><a href="{{ d.url }}" target="_blank" rel="noopener"><i class="ti ti-file me-1"></i>{{ d.arquivo }}</a></td>
+                                                    <td>{{ d.onde }}</td>
+                                                    <td class="text-nowrap">{{ d.data }}</td>
+                                                    <td>{{ d.usuario ?: '—' }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="card-footer pp-sub">Para anexar nota fiscal, comprovante ou etiqueta, use o <a href="{{ tela.url_ticket ~ docs.chamado }}">chamado #{{ docs.chamado }}</a>.</div>
+                            {% else %}
+                                <div class="card-body pp-vazio" data-pp-vazio="documentos" data-pp-docs="{{ docs.situacao }}">
+                                    <i class="ti ti-paperclip"></i>
+                                    {% if docs.situacao == 'sem_chamado' %}
+                                        <div>Sem chamado vinculado.</div>
+                                        <div class="pp-sub">Os documentos do envio (nota fiscal, comprovante de postagem, etiqueta) são os anexos do chamado vinculado ao objeto.</div>
+                                    {% elseif docs.situacao == 'sem_acesso' %}
+                                        <div>Você não tem acesso ao chamado #{{ docs.chamado }}.</div>
+                                    {% elseif docs.situacao == 'inexistente' %}
+                                        <div>O chamado #{{ docs.chamado }} foi excluído ou não existe mais.</div>
+                                    {% else %}
+                                        <div>O chamado #{{ docs.chamado }} não tem documentos anexados.</div>
+                                        <div class="pp-sub">Anexe nota fiscal, comprovante ou etiqueta no <a href="{{ tela.url_ticket ~ docs.chamado }}">chamado</a> e eles aparecem aqui.</div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
+
+                    {# ---- Histórico ---- #}
                     <div class="tab-pane" id="pp-aba-hist" role="tabpanel">
-                        <div class="card pp-card"><div class="card-body text-secondary">Histórico de alterações do objeto — Bloco 6.</div></div>
+                        <div class="card pp-card">
+                            <div class="card-header"><h3 class="card-title">Histórico do acompanhamento</h3></div>
+                            <div class="card-body">
+                                <ul class="pp-hist" data-pp-lista="historico">
+                                    {% for h in ab.historico %}
+                                        <li class="pp-hist-{{ h.tipo }}" data-pp-hist="{{ h.tipo }}">
+                                            <div class="pp-hist-icone"><i class="{{ h.icone }}"></i></div>
+                                            <div>
+                                                <div class="fw-medium">{{ h.titulo }}</div>
+                                                <div class="pp-sub">{{ h.quando }}{{ h.sub ? ' · ' ~ h.sub : '' }}</div>
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                                <div class="pp-sub mt-2">Consultas sem evento novo não ficam registradas por objeto; todas as execuções estão em Configuração › Últimas execuções.</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -127,7 +240,7 @@
                         <dl class="row mb-0 pp-dados">
                             <dt class="col-5">Destinatário</dt><dd class="col-7">{{ o.destinatario }}</dd>
                             <dt class="col-5" title="Responsável pelo recebimento">Recebimento</dt><dd class="col-7" data-pp-campo="contato">{{ o.contato ?: '—' }}</dd>
-                            <dt class="col-5">WhatsApp</dt><dd class="col-7" data-pp-campo="whatsapp">{{ o.whatsapp ?: '—' }}{% if tela.real and o.whatsapp and not o.avisar_whatsapp %} <span class="pp-sub">(sem aviso)</span>{% endif %}</dd>
+                            <dt class="col-5">WhatsApp</dt><dd class="col-7" data-pp-campo="whatsapp">{{ o.whatsapp ?: '—' }}{% if o.whatsapp and not o.avisar_whatsapp %} <span class="pp-sub">(sem aviso)</span>{% endif %}</dd>
                             <dt class="col-5">E-mail</dt><dd class="col-7">{{ o.email ?: '—' }}</dd>
                             <dt class="col-5">Cidade</dt><dd class="col-7">{{ o.cidade ?: '—' }}</dd>
                             <dt class="col-5">Retirada</dt><dd class="col-7">{{ o.retirada ?: '—' }}</dd>
@@ -147,17 +260,19 @@
                             <dd class="col-7">{% if o.chamado %}<a href="{{ tela.url_ticket ~ o.chamado }}">#{{ o.chamado }}{{ o.chamado_titulo ? ' · ' ~ o.chamado_titulo : '' }}</a>{% else %}—{% endif %}</dd>
                             <dt class="col-5">Responsável</dt><dd class="col-7">{{ o.responsavel }}</dd>
                             {% if o.grupo %}<dt class="col-5">Grupo</dt><dd class="col-7">{{ o.grupo }}</dd>{% endif %}
+                            <dt class="col-5">Cadastrado</dt><dd class="col-7">{{ o.cadastrado ?: '—' }}</dd>
                         </dl>
                     </div>
                 </div>
 
                 {% if o.alertas|length > 0 %}
-                    <div class="card pp-card">
+                    <div class="card pp-card" data-pp-card="alertas-recentes">
                         <div class="card-header"><h3 class="card-title">Alertas disparados</h3></div>
                         <div class="card-body">
-                            {% for a in o.alertas %}
+                            {% for a in o.alertas|slice(0, 3) %}
                                 <div class="py-2 {{ not loop.last ? 'border-bottom' : '' }}"><strong>{{ a.quando }}</strong> · {{ a.titulo }}<div class="pp-sub">{{ a.canais }}</div></div>
                             {% endfor %}
+                            {% if o.alertas|length > 3 %}<a href="#pp-aba-alertas" data-bs-toggle="tab" class="small">Ver todos ({{ o.alertas|length }})</a>{% endif %}
                         </div>
                     </div>
                 {% endif %}

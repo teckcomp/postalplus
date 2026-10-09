@@ -497,17 +497,17 @@ class Objeto extends CommonDBTM
      */
     public static function paraTela(array $r): array
     {
-        /** @var \DBmysql $DB */
-        global $DB;
-
         $data = static function (?string $v, string $fmt): string {
             return $v ? date($fmt, strtotime($v)) : '';
         };
 
+        // Título do chamado só para quem pode ver o chamado (Bloco 6); os demais veem o número.
         $chamadoTitulo = '';
         if ((int) $r['tickets_id'] > 0) {
-            $t = $DB->request(['SELECT' => ['name'], 'FROM' => 'glpi_tickets', 'WHERE' => ['id' => (int) $r['tickets_id']]])->current();
-            $chamadoTitulo = (string) ($t['name'] ?? '');
+            $t = new Ticket();
+            if ($t->getFromDB((int) $r['tickets_id']) && $t->canViewItem()) {
+                $chamadoTitulo = (string) $t->fields['name'];
+            }
         }
 
         $previsto = $data($r['prazo_previsto'] ?? null, 'd/m/Y');
