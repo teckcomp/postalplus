@@ -1,0 +1,65 @@
+{# Postal+ — Painel provisório (Bloco 0). Variável recebida: info #}
+<div class="postalplus container-fluid py-3">
+    <div class="d-flex align-items-center gap-2 mb-1">
+        <h2 class="mb-0">Postal+</h2>
+        <span class="badge bg-blue-lt">v{{ info.versao }}</span>
+        <span class="badge {{ info.tabelas_ok ? 'bg-green-lt' : 'bg-red-lt' }}" data-pp-status="{{ info.tabelas_ok ? 'ok' : 'erro' }}">
+            {{ info.tabelas_ok ? 'Instalação OK' : 'Tabelas faltando' }}
+        </span>
+    </div>
+    <p class="text-secondary">Esqueleto instalado. O painel de rastreio chega no Bloco 5; esta página mostra o diagnóstico da instalação.</p>
+
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header"><h3 class="card-title">Tabelas</h3></div>
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead><tr><th>Tabela</th><th>Situação</th><th class="text-end">Linhas</th></tr></thead>
+                        <tbody>
+                        {% for t in info.tabelas %}
+                            <tr>
+                                <td><code>{{ t.nome }}</code></td>
+                                <td>
+                                    {% if t.existe %}
+                                        <span class="badge bg-green-lt">criada</span>
+                                    {% else %}
+                                        <span class="badge bg-red-lt">ausente</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">{{ t.linhas }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title">Configuração</h3></div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-6">Ambiente CWS</dt><dd class="col-6">{{ info.ambiente }}</dd>
+                        <dt class="col-6">Chaves de configuração</dt><dd class="col-6">{{ info.config_qtd }}</dd>
+                        <dt class="col-6">Credenciais</dt>
+                        <dd class="col-6">{{ info.credenciais ? 'preenchidas' : 'não preenchidas (Bloco 1)' }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h3 class="card-title">Seus direitos no Postal+</h3></div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0 postalplus-direitos">
+                        <li>{{ info.direitos.objeto_ler ? '✔' : '✘' }} Ler objetos</li>
+                        <li>{{ info.direitos.objeto_criar ? '✔' : '✘' }} Criar objetos</li>
+                        <li>{{ info.direitos.config_ler ? '✔' : '✘' }} Ver configuração</li>
+                        <li>{{ info.direitos.config_alterar ? '✔' : '✘' }} Alterar configuração</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
