@@ -129,3 +129,13 @@
 .pp-monitor-ok .ti-point-filled { animation: pp-pulso 2s ease-in-out infinite; }
 @keyframes pp-pulso { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .pp-monitor-ok .ti-point-filled { animation: none; } }
+
+/* ---------- Painel: estado vazio (Bloco 5) ---------- */
+.pp-vazio-icone {
+    width: 3.5rem; height: 3.5rem; margin: 0 auto; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(32, 107, 196, .1); color: #1c5bb8; font-size: 1.75rem;
+}
+#pp-estado-vazio p { max-width: 34rem; margin-left: auto; margin-right: auto; }
+.pp-kpi:disabled { opacity: .6; cursor: default; }
+tr[data-pp-antigo] { opacity: .75; }

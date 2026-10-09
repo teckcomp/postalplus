@@ -1,4 +1,4 @@
-{# Postal+ — Painel (Bloco 4: objetos reais + monitoramento automático + demonstração). Variáveis: nav, tela #}
+{# Postal+ — Painel (Bloco 5: só dados reais). Variáveis: nav, tela #}
 <div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="painel">
     {% include '@postalplus/_nav.html.twig' with {
         nav: nav,
@@ -10,22 +10,19 @@
         {% include '@postalplus/_monitor.html.twig' with {m: tela.monitor} only %}
     </div>
 
-    {% include '@postalplus/_demo.html.twig' with {
-        texto: 'Os objetos marcados “demo” são do mockup e saem no Bloco 5. Os que você cadastrar aparecem no topo, com o rastreio da API.'
-    } only %}
-
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
         <div class="input-icon pp-busca">
             <span class="input-icon-addon"><i class="ti ti-search"></i></span>
-            <input type="search" class="form-control" id="pp-busca" placeholder="Código, destinatário ou chamado" aria-label="Buscar">
+            <input type="search" class="form-control" id="pp-busca" placeholder="Código, destinatário ou chamado" aria-label="Buscar"
+                   {{ tela.cadastrados > 0 ? '' : 'disabled' }}>
         </div>
         <button type="button" class="btn btn-outline-secondary" id="pp-consultar-todos" data-pp-consultar
                 data-url="{{ tela.url_consultar }}" data-pp-resultado="pp-consulta-resultado"
                 {{ tela.consultaveis > 0 ? '' : 'disabled' }}
-                title="{{ tela.consultaveis > 0 ? 'Consulta na API Rastro os ' ~ tela.consultaveis ~ ' objeto(s) em acompanhamento (não inclui demo nem entregues)' : 'Nenhum objeto cadastrado em acompanhamento' }}">
+                title="{{ tela.consultaveis > 0 ? 'Consulta na API Rastro os ' ~ tela.consultaveis ~ ' objeto(s) em acompanhamento (entregues e devolvidos não entram)' : 'Nenhum objeto em acompanhamento' }}">
             <i class="ti ti-refresh me-1"></i>Consultar agora
         </button>
-        {% if tela.pode_criar %}
+        {% if tela.pode_criar and tela.cadastrados > 0 %}
             <a class="btn btn-primary" href="{{ tela.url_add }}"><i class="ti ti-plus me-1"></i>Adicionar objetos</a>
         {% endif %}
     </div>
@@ -35,7 +32,7 @@
     <div class="row g-2 mb-3 mt-1" id="pp-cards">
         {% for chave, card in tela.cards %}
             <div class="col-6 col-md-4 col-xl-2">
-                <button type="button" class="pp-kpi" data-pp-card="{{ chave }}" aria-pressed="false">
+                <button type="button" class="pp-kpi" data-pp-card="{{ chave }}" aria-pressed="false" {{ tela.cadastrados > 0 ? '' : 'disabled' }}>
                     <span class="pp-st pp-st-{{ card.classe }}">{{ card.rotulo }}</span>
                     <div class="pp-kpi-num" data-pp-total="{{ chave }}">{{ tela.totais[chave] }}</div>
                     <div class="pp-kpi-desc">{{ card.desc }}</div>
@@ -44,58 +41,78 @@
         {% endfor %}
     </div>
 
-    <div class="card pp-card">
-        <div class="card-header">
-            <h3 class="card-title">
-                <span id="pp-titulo-lista">Todos os objetos em acompanhamento</span>
-                <span class="text-secondary fw-normal">· <span id="pp-qtd">{{ tela.objetos|length }}</span> objeto(s)</span>
-            </h3>
-            <button type="button" class="btn btn-sm btn-ghost-secondary ms-auto d-none" id="pp-limpar">Limpar filtro</button>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-vcenter card-table pp-tabela">
-                <thead>
-                <tr>
-                    <th>Código</th><th>Status</th><th>Último evento</th><th>Atualizado</th>
-                    <th>Prazo / alerta</th><th>Destinatário</th><th>Chamado</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for o in tela.objetos %}
-                    <tr data-pp-linha data-card="{{ o.card }}"
-                        data-pp-origem="{{ o.demo ? 'demo' : 'real' }}"
-                        data-busca="{{ (o.codigo ~ ' ' ~ o.destinatario ~ ' ' ~ o.contato ~ ' ' ~ o.cidade ~ ' ' ~ (o.chamado ? '#' ~ o.chamado : ''))|lower }}">
-                        <td>
-                            <a class="pp-codigo" href="{{ tela.url_objeto ~ o.codigo }}">{{ o.codigo }}</a>
-                            <div class="pp-sub">{% if o.demo %}<span class="badge bg-secondary-lt me-1">demo</span>{% endif %}{{ o.servico }}</div>
-                        </td>
-                        <td><span class="pp-st pp-st-{{ o.situacao }}">{{ o.rotulo }}</span></td>
-                        <td>{{ o.evento }}<div class="pp-sub">{{ o.local }}</div></td>
-                        <td class="text-nowrap">{{ o.atualizado }}</td>
-                        <td class="{{ o.alerta_nivel ? 'pp-alerta-' ~ o.alerta_nivel : 'text-secondary' }}">{{ o.alerta }}</td>
-                        <td>{{ o.destinatario }}{% if o.contato %}<div class="pp-sub" data-pp-contato><i class="ti ti-user"></i> {{ o.contato }}</div>{% endif %}<div class="pp-sub">{{ o.cidade }}</div></td>
-                        <td>{% if o.chamado %}<a href="{{ tela.url_ticket ~ o.chamado }}">#{{ o.chamado }}</a>{% else %}<span class="text-secondary">—</span>{% endif %}</td>
-                    </tr>
-                {% endfor %}
-                <tr id="pp-vazio" class="d-none"><td colspan="7" class="text-center text-secondary py-4">Nenhum objeto encontrado.</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="pp-toasts" id="pp-toasts" aria-live="polite">
-        {% for t in tela.toasts %}
-            <div class="pp-toast" data-pp-toast>
-                <div class="pp-toast-icone {{ t.nivel }}"><i class="{{ t.icone }}"></i></div>
-                <div class="flex-grow-1">
-                    <div class="fw-semibold">{{ t.titulo }} <span class="badge bg-secondary-lt ms-1">demo</span></div>
-                    <div>{{ t.texto }}</div>
-                    <a class="small" href="{{ tela.url_objeto ~ t.codigo }}">Ver objeto</a>
-                </div>
-                <button type="button" class="btn-close" aria-label="Fechar" data-pp-fechar></button>
+    {% if tela.cadastrados == 0 %}
+        <div class="card pp-card" id="pp-estado-vazio">
+            <div class="card-body text-center py-5">
+                <div class="pp-vazio-icone mb-3"><i class="ti ti-package"></i></div>
+                <h3 class="mb-1">Nenhum objeto cadastrado ainda</h3>
+                <p class="text-secondary mb-3">Cadastre o código de rastreio de um envio: ele é consultado na API Rastro na hora e,
+                    depois, acompanhado automaticamente até a entrega.</p>
+                {% if tela.pode_criar %}
+                    <a class="btn btn-primary" href="{{ tela.url_add }}"><i class="ti ti-plus me-1"></i>Adicionar objetos</a>
+                {% else %}
+                    <p class="text-secondary small mb-0">Peça a quem cadastra os envios (direito “Criar” em Postal+ › Objetos rastreados, na aba Postal+ do perfil) para adicionar os códigos.</p>
+                {% endif %}
             </div>
-        {% endfor %}
-    </div>
+        </div>
+    {% else %}
+        <div class="card pp-card">
+            <div class="card-header flex-wrap gap-2">
+                <h3 class="card-title">
+                    <span id="pp-titulo-lista" data-pp-padrao="{{ tela.com_antigos ? 'Todos os objetos, inclusive encerrados' : 'Todos os objetos em acompanhamento' }}">{{ tela.com_antigos ? 'Todos os objetos, inclusive encerrados' : 'Todos os objetos em acompanhamento' }}</span>
+                    <span class="text-secondary fw-normal">· <span id="pp-qtd">{{ tela.objetos|length }}</span> objeto(s)</span>
+                </h3>
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-ghost-secondary d-none" id="pp-limpar">Limpar filtro</button>
+                    {% if tela.com_antigos %}
+                        <a class="btn btn-sm btn-ghost-secondary" id="pp-encerrados" href="{{ tela.url_painel }}">
+                            <i class="ti ti-eye-off me-1"></i>Ocultar encerrados há mais de {{ tela.dias_encerrados }} dias
+                        </a>
+                    {% elseif tela.antigos > 0 %}
+                        <a class="btn btn-sm btn-ghost-secondary" id="pp-encerrados" href="{{ tela.url_painel }}?encerrados=1">
+                            <i class="ti ti-archive me-1"></i>Mostrar encerrados ({{ tela.antigos }})
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table pp-tabela">
+                    <thead>
+                    <tr>
+                        <th>Código</th><th>Status</th><th>Último evento</th><th>Atualizado</th>
+                        <th>Prazo / alerta</th><th>Destinatário</th><th>Chamado</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for o in tela.objetos %}
+                        <tr data-pp-linha data-card="{{ o.card }}" {{ o.antigo ? 'data-pp-antigo' : '' }}
+                            data-busca="{{ (o.codigo ~ ' ' ~ o.destinatario ~ ' ' ~ o.contato ~ ' ' ~ o.cidade ~ ' ' ~ (o.chamado ? '#' ~ o.chamado : ''))|lower }}">
+                            <td>
+                                <a class="pp-codigo" href="{{ tela.url_objeto ~ o.codigo }}">{{ o.codigo }}</a>
+                                <div class="pp-sub">{% if o.antigo %}<span class="badge bg-secondary-lt me-1" title="Encerrado há mais de {{ tela.dias_encerrados }} dias">encerrado</span>{% endif %}{{ o.servico }}</div>
+                            </td>
+                            <td><span class="pp-st pp-st-{{ o.situacao }}">{{ o.rotulo }}</span></td>
+                            <td>{{ o.evento }}<div class="pp-sub">{{ o.local }}</div></td>
+                            <td class="text-nowrap">{{ o.atualizado }}</td>
+                            <td class="{{ o.alerta_nivel ? 'pp-alerta-' ~ o.alerta_nivel : 'text-secondary' }}">{{ o.alerta }}</td>
+                            <td>{{ o.destinatario }}{% if o.contato %}<div class="pp-sub" data-pp-contato><i class="ti ti-user"></i> {{ o.contato }}</div>{% endif %}<div class="pp-sub">{{ o.cidade }}</div></td>
+                            <td>{% if o.chamado %}<a href="{{ tela.url_ticket ~ o.chamado }}">#{{ o.chamado }}</a>{% else %}<span class="text-secondary">—</span>{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                    <tr id="pp-vazio" class="{{ tela.objetos|length > 0 ? 'd-none' : '' }}">
+                        <td colspan="7" class="text-center text-secondary py-4">
+                            {%- if tela.objetos|length > 0 -%}
+                                Nenhum objeto encontrado.
+                            {%- else -%}
+                                Nenhum objeto em acompanhamento nem encerrado nos últimos {{ tela.dias_encerrados }} dias.
+                            {%- endif -%}
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
 </div>
 <script src="{{ nav.web }}/js/painel.js?v={{ nav.v }}"></script>
 <script src="{{ nav.web }}/js/consultar.js?v={{ nav.v }}"></script>

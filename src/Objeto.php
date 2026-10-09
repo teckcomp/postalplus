@@ -291,6 +291,112 @@ class Objeto extends CommonDBTM
         return $linhas;
     }
 
+    /** Encerrados (entregues/devolvidos) somem do painel depois deste número de dias. */
+    public const DIAS_ENCERRADOS_PAINEL = 30;
+
+    /** Data limite: encerrados com último evento antes dela são "antigos". */
+    public static function limiteEncerrados(string $agora): string
+    {
+        return date('Y-m-d H:i:s', strtotime($agora) - self::DIAS_ENCERRADOS_PAINEL * 86400);
+    }
+
+    /**
+     * Encerrado há mais de DIAS_ENCERRADOS_PAINEL dias: acompanhamento terminado (is_active = 0 ou situação
+     * final) e último evento — ou, sem evento, a última alteração — anterior ao limite.
+     *
+     * @param array<string,mixed> $r
+     */
+    public static function encerradoAntigo(array $r, string $agora): bool
+    {
+        $encerrado = (int) ($r['is_active'] ?? 1) === 0 || in_array((string) $r['situacao'], Situacao::FINAIS, true);
+        if (!$encerrado) {
+            return false;
+        }
+        $ref = (string) ($r['ultimo_evento_data'] ?: ($r['date_mod'] ?? ''));
+
+        return $ref !== '' && $ref < self::limiteEncerrados($agora);
+    }
+
+    /**
+     * Objetos do painel nas entidades ativas, mais recentes primeiro: em acompanhamento + encerrados nos
+     * últimos DIAS_ENCERRADOS_PAINEL dias. Com $comAntigos, também os encerrados há mais tempo.
+     *
+     * @return list<array<string,mixed>> linhas cruas da tabela
+     */
+    public static function listarPainel(bool $comAntigos, string $agora, int $limite = 1000): array
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $t     = self::getTable();
+        $where = [["$t.is_deleted" => 0], getEntitiesRestrictCriteria($t, '', '', true)];
+        if (!$comAntigos) {
+            $where[] = self::criterioRecente($t, $agora);
+        }
+
+        $linhas = [];
+        foreach ($DB->request([
+            'FROM'  => $t,
+            'WHERE' => ['AND' => array_values(array_filter($where))],
+            'ORDER' => ["$t.date_creation DESC", "$t.id DESC"],
+            'LIMIT' => $limite,
+        ]) as $r) {
+            $linhas[] = $r;
+        }
+
+        return $linhas;
+    }
+
+    /** Quantos objetos visíveis estão encerrados há mais de DIAS_ENCERRADOS_PAINEL dias. */
+    public static function contarEncerradosAntigos(string $agora): int
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $t      = self::getTable();
+        $limite = self::limiteEncerrados($agora);
+        $linha  = $DB->request([
+            'COUNT' => 'total',
+            'FROM'  => $t,
+            'WHERE' => ['AND' => array_values(array_filter([
+                ["$t.is_deleted" => 0],
+                getEntitiesRestrictCriteria($t, '', '', true),
+                ['OR' => [["$t.is_active" => 0], ["$t.situacao" => Situacao::FINAIS]]],
+                ['OR' => [
+                    ["$t.ultimo_evento_data" => ['<', $limite]],
+                    ['AND' => [["$t.ultimo_evento_data" => null], ["$t.date_mod" => ['<', $limite]]]],
+                ]],
+            ]))],
+        ])->current();
+
+        return (int) ($linha['total'] ?? 0);
+    }
+
+    /** Quantos objetos (não excluídos) o usuário enxerga nas entidades ativas, encerrados inclusive. */
+    public static function contarVisiveis(): int
+    {
+        $t = self::getTable();
+
+        return countElementsInTable($t, ["$t.is_deleted" => 0] + getEntitiesRestrictCriteria($t, '', '', true));
+    }
+
+    /**
+     * Critério "não é encerrado antigo": em acompanhamento, ou último evento (sem evento: última alteração)
+     * dentro do limite.
+     *
+     * @return array<string,mixed>
+     */
+    private static function criterioRecente(string $t, string $agora): array
+    {
+        $limite = self::limiteEncerrados($agora);
+
+        return ['OR' => [
+            ['AND' => [["$t.is_active" => 1], ['NOT' => ["$t.situacao" => Situacao::FINAIS]]]],
+            ["$t.ultimo_evento_data" => ['>=', $limite]],
+            ['AND' => [["$t.ultimo_evento_data" => null], ["$t.date_mod" => ['>=', $limite]]]],
+        ]];
+    }
+
     /** Objeto pelo código, só se o usuário enxergar a entidade dele. */
     public static function buscarVisivel(string $codigo): ?self
     {
@@ -438,6 +544,8 @@ class Objeto extends CommonDBTM
             $nivel  = $restantes <= 2 ? ($restantes < 0 ? 'critico' : 'atencao') : '';
         } elseif ($situacao === 'entregue') {
             $alerta = 'Entregue' . (!empty($r['ultimo_evento_data']) ? ' em ' . date('d/m', strtotime((string) $r['ultimo_evento_data'])) : '');
+        } elseif ($rotulo === 'Devolvido ao remetente') {
+            $alerta = 'Devolvido' . (!empty($r['ultimo_evento_data']) ? ' em ' . date('d/m', strtotime((string) $r['ultimo_evento_data'])) : '');
         } elseif ($erro !== '' && empty($r['ultimo_evento_descricao'])) {
             $alerta = str_contains($erro, 'SRO-020') ? 'Sem registro nos Correios' : mb_strimwidth($erro, 0, 60, '…');
             $nivel  = 'atencao';

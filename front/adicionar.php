@@ -13,7 +13,6 @@
 
 use Glpi\Application\View\TemplateRenderer;
 use GlpiPlugin\Postalplus\Configuracao;
-use GlpiPlugin\Postalplus\Demo;
 use GlpiPlugin\Postalplus\Menu;
 use GlpiPlugin\Postalplus\Objeto;
 use GlpiPlugin\Postalplus\PerfilDireitos;
@@ -58,8 +57,8 @@ if (isset($_POST['salvar_individual'])) {
     }
 }
 
-// Códigos já cadastrados = tabela real + demonstração (para a classificação do lote).
-$codigos = Demo::codigos();
+// Códigos já cadastrados (para a classificação do lote). Bloco 5: só a tabela real, sem a demonstração.
+$codigos = [];
 foreach ($DB->request(['SELECT' => ['codigo'], 'FROM' => Objeto::getTable()]) as $r) {
     $codigos[] = (string) $r['codigo'];
 }

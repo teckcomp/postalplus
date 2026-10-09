@@ -1,4 +1,4 @@
-/* Postal+ — Painel: filtro pelos cards, busca e fechamento dos toasts (client-side). */
+/* Postal+ — Painel: filtro pelos cards e busca (client-side). Linhas de encerrados antigos (data-card="antigo") só aparecem sem filtro de card. */
 (function () {
     'use strict';
 
@@ -14,6 +14,7 @@
         var vazio  = document.getElementById('pp-vazio');
         var limpar = document.getElementById('pp-limpar');
         var filtro = '';
+        var padrao = titulo ? (titulo.getAttribute('data-pp-padrao') || titulo.textContent) : '';
 
         function aplicar() {
             var termo = (busca && busca.value ? busca.value : '').trim().toLowerCase();
@@ -33,7 +34,7 @@
             });
             if (titulo) {
                 var ativoCard = cards.filter(function (c) { return c.getAttribute('data-pp-card') === filtro; })[0];
-                titulo.textContent = ativoCard ? ativoCard.querySelector('.pp-st').textContent : 'Todos os objetos em acompanhamento';
+                titulo.textContent = ativoCard ? ativoCard.querySelector('.pp-st').textContent : padrao;
             }
             if (limpar) { limpar.classList.toggle('d-none', !filtro && !termo); }
         }
@@ -53,13 +54,6 @@
                 aplicar();
             });
         }
-
-        raiz.querySelectorAll('[data-pp-fechar]').forEach(function (b) {
-            b.addEventListener('click', function () {
-                var t = b.closest('[data-pp-toast]');
-                if (t) { t.remove(); }
-            });
-        });
     }
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', iniciar); } else { iniciar(); }
