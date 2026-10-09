@@ -28,6 +28,12 @@ $nav = Menu::nav('config');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     Session::checkRight(PerfilDireitos::RIGHT_CONFIG, UPDATE);
 
+    if (isset($_POST['testar_email'])) {
+        $t = \GlpiPlugin\Postalplus\Notificacao::teste(Configuracao::lerCru());
+        Session::addMessageAfterRedirect(htmlescape($t['mensagem']), false, $t['ok'] ? INFO : WARNING);
+        Html::redirect($nav['web'] . '/front/config.php');
+    }
+
     $r = Configuracao::salvar($_POST);
     if ($r['ok']) {
         Session::addMessageAfterRedirect('Configuração do Postal+ salva.', false, INFO);
@@ -92,6 +98,7 @@ TemplateRenderer::getInstance()->display('@postalplus/config.html.twig', [
         'pode_alterar' => Session::haveRight(PerfilDireitos::RIGHT_CONFIG, UPDATE),
         'simulado'     => Cliente::simulado(),
         'url_testar'   => $nav['web'] . '/ajax/testar_conexao.php',
+        'url_diagnostico' => $nav['web'] . '/ajax/diagnostico.php',
         'monitor'      => Monitor::estado(),
         'cron_nome'    => Monitor::CRON,
         'url_cron'     => Monitor::tarefa() !== null ? CronTask::getFormURLWithID((int) Monitor::tarefa()['id']) : '',

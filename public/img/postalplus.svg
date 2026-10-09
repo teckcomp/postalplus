@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Postal+">
+  <rect x="8" y="24" width="88" height="88" rx="18" fill="#1B3A5C"/>
+  <path d="M13 48 L52 66 L91 48" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M52 66 V108" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="100" cy="28" r="22" fill="#E8632B"/>
+  <path d="M100 17 V39 M89 28 H111" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round"/>
+</svg>

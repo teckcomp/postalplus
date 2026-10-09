@@ -218,6 +218,7 @@ class Install
                 `id` int {$sign} NOT NULL AUTO_INCREMENT,
                 `plugin_postalplus_objetos_id` int {$sign} NOT NULL DEFAULT 0,
                 `regra` varchar(40) NOT NULL,
+                `chave` varchar(255) DEFAULT NULL,
                 `nivel` varchar(20) NOT NULL DEFAULT 'info',
                 `titulo` varchar(255) DEFAULT NULL,
                 `mensagem` text,
@@ -228,9 +229,17 @@ class Install
                 PRIMARY KEY (`id`),
                 KEY `plugin_postalplus_objetos_id` (`plugin_postalplus_objetos_id`),
                 KEY `regra` (`regra`),
+                KEY `chave` (`chave`),
                 KEY `tickets_id` (`tickets_id`),
                 KEY `date_creation` (`date_creation`)
             ) {$opts}");
+        }
+
+        // 1.0.0 (Bloco 7): chave de deduplicação do alerta (uma vez por ocorrência).
+        if (!$DB->fieldExists($t, 'chave')) {
+            $migration->displayMessage("Adicionando $t.chave");
+            $migration->addField($t, 'chave', 'string', ['after' => 'regra']);
+            $migration->addKey($t, 'chave');
         }
 
         // Quem já viu/fechou cada alerta em tela.
@@ -310,8 +319,9 @@ class Install
     }
 
     /**
-     * Regras padrão conforme o mockup aprovado. Só insere a regra que ainda não existe:
-     * reinstalar NÃO desfaz ajustes feitos na tela.
+     * Regras padrão. Só insere a regra que ainda não existe: reinstalar NÃO desfaz ajustes feitos na tela.
+     * 1.0.0 (piloto em produção): só o canal "Tela" vem ligado; e-mail, chamado e WhatsApp são ligados
+     * um a um na tela Regras depois de o rastreio bater com o site dos Correios.
      *
      * @return array<string,array<string,mixed>>
      */
@@ -319,16 +329,16 @@ class Install
     {
         return [
             'aguardando_retirada' => [
-                'parametro' => 2, 'canal_tela' => 1, 'canal_email' => 1, 'canal_whatsapp' => 1, 'canal_chamado' => 0,
+                'parametro' => 2, 'canal_tela' => 1, 'canal_email' => 0, 'canal_whatsapp' => 0, 'canal_chamado' => 0,
             ],
             'sem_movimentacao' => [
-                'parametro' => 5, 'canal_tela' => 1, 'canal_email' => 1, 'canal_whatsapp' => 0, 'canal_chamado' => 1,
+                'parametro' => 5, 'canal_tela' => 1, 'canal_email' => 0, 'canal_whatsapp' => 0, 'canal_chamado' => 0,
             ],
             'atraso' => [
-                'parametro' => 1, 'canal_tela' => 1, 'canal_email' => 1, 'canal_whatsapp' => 0, 'canal_chamado' => 0,
+                'parametro' => 1, 'canal_tela' => 1, 'canal_email' => 0, 'canal_whatsapp' => 0, 'canal_chamado' => 0,
             ],
             'eventos_criticos' => [
-                'parametro' => null, 'canal_tela' => 1, 'canal_email' => 1, 'canal_whatsapp' => 0, 'canal_chamado' => 1,
+                'parametro' => null, 'canal_tela' => 1, 'canal_email' => 0, 'canal_whatsapp' => 0, 'canal_chamado' => 0,
                 'eventos'   => json_encode([
                     'carteiro_nao_atendido',
                     'endereco_incorreto',
@@ -341,7 +351,7 @@ class Install
             ],
             'entrega_confirmada' => [
                 // canal_chamado aqui significa "solucionar o chamado vinculado".
-                'parametro' => null, 'canal_tela' => 1, 'canal_email' => 0, 'canal_whatsapp' => 1, 'canal_chamado' => 1,
+                'parametro' => null, 'canal_tela' => 1, 'canal_email' => 0, 'canal_whatsapp' => 0, 'canal_chamado' => 0,
             ],
         ];
     }

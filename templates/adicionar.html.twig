@@ -1,4 +1,4 @@
-{# Postal+ — Adicionar objetos (individual grava e consulta; lote só classifica). Variáveis: nav, tela #}
+{# Postal+ — Adicionar objetos (individual e importação em lote). Variáveis: nav, tela #}
 {% set f = tela.form %}
 <div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="adicionar">
     {% include '@postalplus/_nav.html.twig' with {
@@ -97,12 +97,10 @@
         </div>
 
         <div class="col-xl-6">
-            <div class="card pp-card">
+            <form class="card pp-card" method="post" action="{{ nav.web }}/front/adicionar.php" enctype="multipart/form-data" id="pp-form-lote">
+                <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
                 <div class="card-header"><h3 class="card-title">Importação em lote</h3></div>
                 <div class="card-body">
-                    {% include '@postalplus/_demo.html.twig' with {
-                        texto: 'A classificação dos códigos já funciona, mas a importação em lote só grava no Bloco 10.'
-                    } only %}
                     <ul class="nav nav-pills mb-3" role="tablist">
                         <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#pp-lote-colar" role="tab">Colar códigos</a></li>
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pp-lote-csv" role="tab">Arquivo CSV</a></li>
@@ -111,35 +109,50 @@
                     <div class="tab-content">
                         <div class="tab-pane active show" id="pp-lote-colar" role="tabpanel">
                             <label class="form-label" for="pp-lote">Um código por linha (ou separados por vírgula)</label>
-                            <textarea class="form-control font-monospace" id="pp-lote" rows="6" placeholder="QP303012777BR&#10;OY994410382BR"></textarea>
+                            <textarea class="form-control font-monospace" id="pp-lote" name="lote_codigos" rows="6" placeholder="QP303012777BR&#10;OY994410382BR"></textarea>
                             <div class="d-flex flex-wrap gap-2 my-2" id="pp-lote-resumo"></div>
                             <div class="pp-lote-lista d-none" id="pp-lote-lista"></div>
                         </div>
                         <div class="tab-pane" id="pp-lote-csv" role="tabpanel">
-                            <div class="text-secondary">Importar planilha CSV (código, destinatário, WhatsApp, cidade, chamado) — Bloco 10.</div>
+                            <label class="form-label" for="pp-lote-arquivo">Planilha CSV (ou TXT)</label>
+                            <input class="form-control" type="file" id="pp-lote-arquivo" name="lote_arquivo" accept=".csv,.txt,.tsv,text/csv,text/plain">
+                            <div class="form-hint">Separador ; , ou tabulação. Com cabeçalho, são lidas as colunas <code>código</code>, <code>destinatário</code>, <code>contato</code>, <code>whatsapp</code>, <code>e-mail</code>, <code>cidade</code>, <code>chamado</code> e <code>postagem</code>; sem cabeçalho, só os códigos. Até 500 linhas.</div>
                         </div>
                         <div class="tab-pane" id="pp-lote-ro" role="tabpanel">
-                            <div class="text-secondary">Importar o Relatório de Objetos exportado do contrato — Bloco 10.</div>
+                            <div class="text-secondary mb-2">Exporte o Relatório de Objetos do contrato (Meu Correios › Rastreamento) em CSV e envie aqui: os códigos de rastreio são localizados em qualquer coluna.</div>
+                            <div class="form-hint">Use o campo de arquivo da aba <strong>Arquivo CSV</strong> — o mesmo leitor atende os dois formatos.</div>
                         </div>
                     </div>
                     <div class="row g-3 mt-1">
                         <div class="col-md-6">
-                            <label class="form-label">Serviço padrão</label>
-                            <select class="form-select"><option>Detectar pela API</option>{% for s in tela.servicos %}<option>{{ s }}</option>{% endfor %}</select>
+                            <label class="form-label" for="pp-lote-servico">Serviço padrão</label>
+                            <select class="form-select" id="pp-lote-servico" name="lote_servico"><option value="">Detectar pela API</option>{% for s in tela.servicos %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Responsável</label>
-                            <select class="form-select">
+                            <label class="form-label" for="pp-lote-resp">Responsável</label>
+                            <select class="form-select" id="pp-lote-resp" name="lote_responsavel">
                                 <option value="u{{ tela.usuario.id }}">{{ tela.usuario.nome }}</option>
                                 {% for g in tela.grupos %}<option value="g{{ g.id }}">Grupo {{ g.nome }}</option>{% endfor %}
                             </select>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="pp-lote-ent">Entidade</label>
+                            <select class="form-select" id="pp-lote-ent" name="lote_entities_id">
+                                {% for e in tela.entidades %}<option value="{{ e.id }}" {{ e.id == f.entities_id ? 'selected' : '' }}>{{ e.nome }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <label class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="lote_abrir_chamado" value="1" checked>
+                                <span class="form-check-label">Abrir chamado automaticamente se houver alerta crítico</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="card-footer d-flex justify-content-end">
-                    <button type="button" class="btn btn-primary" id="pp-importar" disabled title="Importação chega no Bloco 10">Importar 0 objeto(s) válido(s)</button>
+                    <button type="submit" class="btn btn-primary" id="pp-importar" name="importar_lote" value="1" disabled>Importar 0 objeto(s) válido(s)</button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 </div>

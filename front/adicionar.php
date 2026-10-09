@@ -5,7 +5,7 @@
  *
  * Bloco 2: o formulário "Objeto individual" grava de verdade (POST nesta mesma página).
  * Bloco 3: logo depois de gravar, consulta o objeto na API Rastro (falha na consulta não desfaz o cadastro).
- * A importação em lote continua só classificando no navegador (gravação no Bloco 10).
+ * Bloco 10: importação em lote (códigos colados, CSV ou Relatório de Objetos) pela classe Importacao.
  *
  * @copyright Teckcomp
  * @license   GPLv3+
@@ -13,6 +13,7 @@
 
 use Glpi\Application\View\TemplateRenderer;
 use GlpiPlugin\Postalplus\Configuracao;
+use GlpiPlugin\Postalplus\Importacao;
 use GlpiPlugin\Postalplus\Menu;
 use GlpiPlugin\Postalplus\Objeto;
 use GlpiPlugin\Postalplus\PerfilDireitos;
@@ -55,6 +56,51 @@ if (isset($_POST['salvar_individual'])) {
             $erros[] = 'Não foi possível gravar o objeto. Veja a mensagem do GLPI e o log files/_log/postalplus.log.';
         }
     }
+}
+
+// Importação em lote (Bloco 10): texto colado ou arquivo (CSV / Relatório de Objetos).
+if (isset($_POST['importar_lote'])) {
+    $texto = (string) ($_POST['lote_codigos'] ?? '');
+    $arq   = $_FILES['lote_arquivo'] ?? null;
+    if (is_array($arq) && (int) ($arq['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK && is_uploaded_file((string) $arq['tmp_name'])) {
+        if ((int) $arq['size'] > 5 * 1024 * 1024) {
+            Session::addMessageAfterRedirect('Arquivo maior que 5 MB.', false, ERROR);
+            Html::redirect($nav['web'] . '/front/adicionar.php');
+        }
+        $texto = (string) file_get_contents((string) $arq['tmp_name']);
+    } elseif (is_array($arq) && (int) ($arq['error'] ?? 0) !== UPLOAD_ERR_NO_FILE && (int) ($arq['error'] ?? 0) !== UPLOAD_ERR_OK) {
+        Session::addMessageAfterRedirect('Falha ao receber o arquivo (código ' . (int) $arq['error'] . ').', false, ERROR);
+        Html::redirect($nav['web'] . '/front/adicionar.php');
+    }
+
+    $analise = Importacao::analisar($texto);
+    $resp    = (string) ($_POST['lote_responsavel'] ?? '');
+    $padrao  = [
+        'entities_id'   => (int) ($_POST['lote_entities_id'] ?? -1),
+        'servico'       => (string) ($_POST['lote_servico'] ?? ''),
+        'users_id'      => str_starts_with($resp, 'u') ? (int) substr($resp, 1) : 0,
+        'groups_id'     => str_starts_with($resp, 'g') ? (int) substr($resp, 1) : 0,
+        'abrir_chamado' => empty($_POST['lote_abrir_chamado']) ? 0 : 1,
+    ];
+
+    if ($analise['itens'] === []) {
+        Session::addMessageAfterRedirect(htmlescape('Nenhum código de rastreio válido encontrado' . ($analise['invalidos'] !== [] ? ' (' . count($analise['invalidos']) . ' com formato inválido)' : '') . '.'), false, WARNING);
+        Html::redirect($nav['web'] . '/front/adicionar.php');
+    }
+
+    $r   = Importacao::importar($analise['itens'], $padrao);
+    $msg = sprintf('Importação: %d objeto(s) cadastrado(s)', $r['gravados'])
+        . ($r['existentes'] > 0 ? sprintf(', %d já existia(m)', $r['existentes']) : '')
+        . ($analise['invalidos'] !== [] ? sprintf(', %d código(s) inválido(s) ignorado(s)', count($analise['invalidos'])) : '')
+        . ($analise['colunas'] !== [] ? ' · colunas lidas: ' . implode(', ', $analise['colunas']) : '') . '.';
+    Session::addMessageAfterRedirect(htmlescape($msg), false, $r['gravados'] > 0 ? INFO : WARNING);
+    if ($r['consulta'] !== null) {
+        Session::addMessageAfterRedirect(htmlescape('Consulta à API: ' . $r['consulta']['mensagem']), false, !empty($r['consulta']['ok']) ? INFO : WARNING);
+    }
+    foreach (array_slice($r['erros'], 0, 10) as $e) {
+        Session::addMessageAfterRedirect(htmlescape($e), false, WARNING);
+    }
+    Html::redirect($nav['web'] . '/front/painel.php');
 }
 
 // Códigos já cadastrados (para a classificação do lote). Bloco 5: só a tabela real, sem a demonstração.

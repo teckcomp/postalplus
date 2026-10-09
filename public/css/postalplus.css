@@ -1,4 +1,5 @@
-/* Postal+ — estilos do plugin (Blocos 1a/1b). Cores semitransparentes para funcionar nas paletas claras e escuras do GLPI. */
+/* Postal+ — estilos do plugin. Identidade visual 1.0: navy #1B3A5C (marca), laranja #E8632B (ação), situações com a mesma intensidade.
+   As regras de identidade ficam no fim do arquivo e só valem dentro de .postalplus (não alteram o resto do GLPI). */
 
 .postalplus .postalplus-direitos li { padding: 2px 0; }
 .postalplus code { font-size: .85em; }
@@ -156,3 +157,84 @@ tr[data-pp-antigo] { opacity: .75; }
 .pp-hist-erro .pp-hist-icone { background: rgba(214, 57, 57, .12); color: #b42318; }
 .pp-hist-encerrado .pp-hist-icone { background: rgba(47, 179, 68, .14); color: #1a7f5a; }
 .pp-hist-cadastro .pp-hist-icone { background: rgba(108, 122, 145, .14); color: #48566a; }
+
+
+/* ---- Alertas em tela (toasts, todas as páginas do GLPI) ---- */
+#pp-toasts { position: fixed; top: 4.5rem; right: 1rem; z-index: 1080; width: min(360px, calc(100vw - 2rem)); display: flex; flex-direction: column; gap: .5rem; pointer-events: none; }
+.pp-toast { pointer-events: auto; background: var(--tblr-bg-surface, #fff); border: 1px solid var(--tblr-border-color, #dadcde); border-left: 4px solid #4263eb; border-radius: .5rem; box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.15); padding: .6rem .75rem; font-size: .85rem; }
+.pp-toast-atencao { border-left-color: #f59f00; }
+.pp-toast-critico { border-left-color: #d63939; }
+.pp-toast-topo { display: flex; align-items: flex-start; gap: .5rem; }
+.pp-toast-topo strong { flex: 1 1 auto; }
+.pp-toast-fechar { border: 0; background: transparent; font-size: 1.1rem; line-height: 1; padding: 0 .2rem; color: inherit; opacity: .6; cursor: pointer; }
+.pp-toast-fechar:hover { opacity: 1; }
+.pp-toast-msg { margin-top: .25rem; }
+.pp-toast-rodape { display: flex; align-items: baseline; gap: .5rem; margin-top: .35rem; }
+
+/* ---- Diagnóstico "Testar rastreio" ---- */
+.pp-diag-bruto { max-height: 360px; overflow: auto; font-size: .75rem; background: var(--tblr-bg-surface-secondary, #f6f8fb); padding: .5rem; border-radius: .25rem; }
+
+
+/* ================= Identidade visual Postal+ 1.0 ================= */
+.postalplus {
+    --pp-navy: #1B3A5C; --pp-navy-claro: #E8EEF5; --pp-laranja: #E8632B; --pp-laranja-escuro: #C9521F; --pp-laranja-claro: #FDEDE4;
+    --pp-texto2: #5B6B7C; --pp-borda: #E3E8EE;
+    --pp-mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+}
+/* Cabeçalho */
+.postalplus .pp-marca { flex: 0 0 auto; display: block; }
+.postalplus .pp-titulo { font-size: 1.65rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; color: var(--pp-navy); }
+.postalplus .pp-subtitulo { font-size: .85rem; color: var(--pp-texto2); margin-top: .15rem; }
+.postalplus .pp-mais { color: var(--pp-laranja); font-weight: 800; }
+.postalplus .pp-nav { background: var(--tblr-bg-surface, #fff); border: 1px solid var(--pp-borda); border-radius: 12px; padding: 4px; gap: 2px; }
+.postalplus .pp-nav .nav-link { border-radius: 9px; font-weight: 600; color: var(--pp-navy); padding: .45rem .85rem; }
+.postalplus .pp-nav .nav-link:hover { background: var(--pp-navy-claro); }
+.postalplus .pp-nav .nav-link.active { background: var(--pp-navy); color: #fff; }
+/* Botões: ação principal em laranja; secundário com contorno navy */
+.postalplus .btn-primary { --tblr-btn-bg: var(--pp-laranja); --tblr-btn-border-color: var(--pp-laranja); --tblr-btn-hover-bg: var(--pp-laranja-escuro); --tblr-btn-hover-border-color: var(--pp-laranja-escuro); --tblr-btn-active-bg: var(--pp-laranja-escuro); --tblr-btn-color: #fff; --tblr-btn-hover-color: #fff;
+    background-color: var(--pp-laranja); border-color: var(--pp-laranja); color: #fff; font-weight: 700; }
+.postalplus .btn-primary:hover, .postalplus .btn-primary:focus { background-color: var(--pp-laranja-escuro); border-color: var(--pp-laranja-escuro); color: #fff; }
+.postalplus .btn-outline-secondary { border-color: var(--pp-navy); color: var(--pp-navy); font-weight: 600; }
+.postalplus .btn-outline-secondary:hover:not(:disabled) { background: var(--pp-navy); color: #fff; }
+.postalplus .card.pp-card { border-color: var(--pp-borda); border-radius: 14px; }
+.postalplus .pp-card .card-title { font-weight: 800; color: var(--pp-navy); }
+/* Situações */
+.postalplus .pp-st { font-weight: 700; }
+.postalplus .pp-st-em_transito, .postalplus .pp-st-saiu_entrega { color: #1E4FBF; background: #E3ECFB; }
+.postalplus .pp-st-aguardando_retirada { color: #8A5A0F; background: #FBF1DC; }
+.postalplus .pp-st-atrasado { color: #A3461C; background: #FDEDE4; }
+.postalplus .pp-st-sem_movimentacao { color: #5B3FA8; background: #EEE8FA; }
+.postalplus .pp-st-problema { color: #9B2626; background: #FBE4E4; }
+.postalplus .pp-st-entregue { color: #166A45; background: #E0F3EA; }
+/* Cards do painel: fio superior na cor da situação */
+.postalplus .pp-kpi { border-radius: 14px; border-color: var(--pp-borda); border-top-width: 4px; }
+.postalplus .pp-kpi[data-pp-card="em_transito"] { border-top-color: #2563EB; }
+.postalplus .pp-kpi[data-pp-card="aguardando_retirada"] { border-top-color: #B7791F; }
+.postalplus .pp-kpi[data-pp-card="atrasado"] { border-top-color: #E8632B; }
+.postalplus .pp-kpi[data-pp-card="sem_movimentacao"] { border-top-color: #7C5CD1; }
+.postalplus .pp-kpi[data-pp-card="problema"] { border-top-color: #C53030; }
+.postalplus .pp-kpi[data-pp-card="entregue"] { border-top-color: #1F8A5B; }
+.postalplus .pp-kpi:hover:not(:disabled), .postalplus .pp-kpi.ativo { border-color: var(--pp-navy); box-shadow: 0 0 0 1px var(--pp-navy) inset; }
+.postalplus .pp-kpi-num { font-weight: 800; color: var(--pp-navy); }
+.postalplus .pp-kpi:disabled { opacity: 1; }
+.postalplus .pp-kpi:disabled .pp-kpi-num { color: #9AA7B5; }
+/* Códigos de rastreio */
+.postalplus .pp-codigo, .postalplus .font-monospace { font-family: var(--pp-mono); letter-spacing: .04em; }
+.postalplus a.pp-codigo { color: var(--pp-navy); font-weight: 600; text-decoration: none; }
+.postalplus a.pp-codigo:hover { color: var(--pp-laranja); }
+.postalplus .pp-tabela td.pp-alerta-atencao { color: #A3461C; }
+.postalplus .pp-tabela td.pp-alerta-critico { color: #9B2626; font-weight: 600; }
+/* Estado vazio */
+.postalplus .pp-vazio-icone { background: var(--pp-laranja-claro); color: var(--pp-laranja); }
+/* Selo Monitorando */
+.postalplus .pp-monitor { border-radius: 999px; padding: .35rem .75rem; font-weight: 600; }
+/* Tema escuro do GLPI: devolve as cores claras do texto da marca */
+[data-bs-theme="dark"] .postalplus .pp-titulo, [data-bs-theme="dark"] .postalplus .pp-kpi-num,
+[data-bs-theme="dark"] .postalplus .pp-card .card-title, [data-bs-theme="dark"] .postalplus a.pp-codigo,
+[data-bs-theme="dark"] .postalplus .pp-nav .nav-link:not(.active) { color: #E6EDF5; }
+[data-bs-theme="dark"] .postalplus .btn-outline-secondary { color: #E6EDF5; border-color: #8FA3BA; }
+
+/* Toasts com a marca */
+.pp-toast { border-left-color: var(--pp-navy, #1B3A5C); border-radius: 12px; }
+.pp-toast-atencao { border-left-color: #E8632B; }
+.pp-toast-critico { border-left-color: #C53030; }

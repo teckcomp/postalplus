@@ -1,4 +1,4 @@
-/* Postal+ — Adicionar objetos: validação do código (o servidor revalida e grava — Bloco 2) e classificação do lote (grava no Bloco 10). */
+/* Postal+ — Adicionar objetos: validação do código (o servidor revalida e grava) e classificação do lote antes de importar (Bloco 10). */
 (function () {
     'use strict';
 
@@ -113,6 +113,22 @@
         var resumo = document.getElementById('pp-lote-resumo');
         var lista = document.getElementById('pp-lote-lista');
         var botao = document.getElementById('pp-importar');
+        var arquivo = document.getElementById('pp-lote-arquivo');
+        var validosColados = 0;
+
+        function atualizarBotao() {
+            if (!botao) { return; }
+            var temArquivo = arquivo && arquivo.files && arquivo.files.length > 0;
+            if (temArquivo) {
+                botao.textContent = 'Importar do arquivo ' + arquivo.files[0].name;
+                botao.disabled = false;
+            } else {
+                botao.textContent = 'Importar ' + validosColados + ' objeto(s) válido(s)';
+                botao.disabled = validosColados === 0;
+            }
+        }
+        if (arquivo) { arquivo.addEventListener('change', atualizarBotao); }
+
         if (lote && resumo && lista) {
             lote.addEventListener('input', function () {
                 var itens = classificar(lote.value, cadastrados);
@@ -135,7 +151,8 @@
                     if (cont.dup) { resumo.appendChild(pilula(cont.dup + ' já cadastrado(s) ou repetido(s)', 'bg-yellow-lt')); }
                     if (cont.invalido) { resumo.appendChild(pilula(cont.invalido + ' com formato inválido', 'bg-red-lt')); }
                 }
-                if (botao) { botao.textContent = 'Importar ' + cont.valido + ' objeto(s) válido(s)'; }
+                validosColados = cont.valido;
+                atualizarBotao();
             });
         }
     }

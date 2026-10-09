@@ -1,8 +1,11 @@
-{# Postal+ — cabeçalho + navegação interna. Recebe: nav (web, ativo, itens, v), titulo, subtitulo #}
-<div class="pp-cabecalho d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
-    <div>
-        <h1 class="pp-titulo mb-1">{{ titulo }}</h1>
-        <div class="text-secondary">{{ subtitulo }}</div>
+{# Postal+ — cabeçalho com a marca + navegação interna. Recebe: nav (web, ativo, itens, v), titulo, subtitulo #}
+<div class="pp-cabecalho d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center gap-3">
+        <img class="pp-marca" src="{{ nav.web }}/img/postalplus.svg?v={{ nav.v }}" width="44" height="44" alt="Postal+">
+        <div>
+            <h1 class="pp-titulo mb-0">{{ titulo }}</h1>
+            <div class="pp-subtitulo">Postal<span class="pp-mais">+</span> · {{ subtitulo }}</div>
+        </div>
     </div>
     <ul class="nav nav-pills pp-nav" data-pp-nav="{{ nav.ativo }}">
         {% for item in nav.itens %}

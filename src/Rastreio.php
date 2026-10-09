@@ -69,6 +69,7 @@ class Rastreio
         $novos  = 0;
         $erros  = 0;
         $fatal  = null;
+        $avaliar = []; // id => hashes novos (motor de regras)
 
         foreach ($objetos as $obj) {
             if ($fatal !== null) {
@@ -79,6 +80,8 @@ class Rastreio
             }
             try {
                 $item = $this->consultarUm($obj);
+                $avaliar[(int) $obj['id']] = $item['novos_hashes'] ?? [];
+                unset($item['novos_hashes']);
             } catch (CwsErro $e) {
                 $item = ['codigo' => (string) $obj['codigo'], 'ok' => false, 'novos' => 0, 'erro' => $e->getMessage()];
                 // Falha de credencial/token/rede vale para todos: não insiste nos demais.
@@ -86,18 +89,31 @@ class Rastreio
                     $fatal = $e->getMessage();
                 }
                 $this->gravarErro($obj, $e->getMessage(), $fatal !== null ? self::RETENTATIVA_MINUTOS : null);
+                if ($fatal === null) {
+                    $avaliar[(int) $obj['id']] = [];
+                }
             }
             $itens[] = $item;
             $novos  += $item['novos'];
             $erros  += $item['ok'] ? 0 : 1;
         }
 
+        // Motor de regras (Bloco 7): avalia os objetos consultados com a linha já atualizada.
+        $alertas = 0;
+        if ($avaliar !== []) {
+            try {
+                $alertas = (new Motor($this->config(), self::agora()))->avaliarLote($avaliar);
+            } catch (\Throwable $e) {
+                Configuracao::log('motor: exceção ' . $e::class . ' ' . $e->getMessage());
+            }
+        }
+
         $n         = count($objetos);
         $resultado = match (true) {
             $n === 0     => 'Nenhum objeto para consultar',
             $fatal !== null => mb_substr('Falhou: ' . $fatal, 0, 255),
-            $erros > 0   => "Concluída com $erros erro(s)",
-            default      => 'Concluída',
+            $erros > 0   => "Concluída com $erros erro(s)" . ($alertas > 0 ? " · $alertas alerta(s)" : ''),
+            default      => 'Concluída' . ($alertas > 0 ? " · $alertas alerta(s)" : ''),
         };
 
         $DB->insert('glpi_plugin_postalplus_consultas', [
@@ -106,25 +122,26 @@ class Rastreio
             'date_end'      => self::agora(),
             'objetos'       => $n,
             'novos_eventos' => $novos,
-            'alertas'       => 0,
+            'alertas'       => $alertas,
             'erros'         => $erros,
             'resultado'     => $resultado,
             'detalhe'       => json_encode(array_values(array_filter($itens, static fn($i) => !$i['ok'])), JSON_UNESCAPED_UNICODE),
         ]);
-        Configuracao::log("consulta $origem: $n objeto(s), $novos evento(s) novo(s), $erros erro(s)" . ($fatal !== null ? ' [interrompida]' : ''));
+        Configuracao::log("consulta $origem: $n objeto(s), $novos evento(s) novo(s), $alertas alerta(s), $erros erro(s)" . ($fatal !== null ? ' [interrompida]' : ''));
 
         return [
             'ok'           => $n > 0 && $erros === 0,
             'interrompida' => $fatal !== null,
             'objetos'      => $n,
             'novos'    => $novos,
+            'alertas'  => $alertas,
             'erros'    => $erros,
-            'mensagem' => self::resumo($n, $novos, $erros, $fatal),
+            'mensagem' => self::resumo($n, $novos, $erros, $fatal, $alertas),
             'itens'    => $itens,
         ];
     }
 
-    public static function resumo(int $n, int $novos, int $erros, ?string $fatal): string
+    public static function resumo(int $n, int $novos, int $erros, ?string $fatal, int $alertas = 0): string
     {
         if ($n === 0) {
             return 'Nenhum objeto em acompanhamento para consultar.';
@@ -134,6 +151,9 @@ class Rastreio
         }
         $txt = $n === 1 ? '1 objeto consultado' : "$n objetos consultados";
         $txt .= $novos === 1 ? ', 1 evento novo' : ", $novos eventos novos";
+        if ($alertas > 0) {
+            $txt .= $alertas === 1 ? ', 1 alerta' : ", $alertas alertas";
+        }
         if ($erros > 0) {
             $txt .= $erros === 1 ? ', 1 com erro' : ", $erros com erro";
         }
@@ -165,10 +185,10 @@ class Rastreio
             return ['codigo' => $codigo, 'ok' => false, 'novos' => 0, 'erro' => $msg];
         }
 
-        $novos = $this->gravarEventos((int) $obj['id'], $eventos);
-        $class = $this->atualizarObjeto($obj, $eventos, $resposta);
+        $hashes = $this->gravarEventos((int) $obj['id'], $eventos);
+        $class  = $this->atualizarObjeto($obj, $eventos, $resposta);
 
-        return ['codigo' => $codigo, 'ok' => true, 'novos' => $novos, 'erro' => null] + $class;
+        return ['codigo' => $codigo, 'ok' => true, 'novos' => count($hashes), 'erro' => null, 'novos_hashes' => $hashes] + $class;
     }
 
     /**
@@ -215,8 +235,9 @@ class Rastreio
 
     /**
      * @param list<array<string,mixed>> $eventos
+     * @return list<string> hashes dos eventos gravados agora
      */
-    private function gravarEventos(int $objetoId, array $eventos): int
+    private function gravarEventos(int $objetoId, array $eventos): array
     {
         /** @var \DBmysql $DB */
         global $DB;
@@ -226,7 +247,7 @@ class Rastreio
             $existentes[$r['hash']] = true;
         }
 
-        $novos = 0;
+        $novos = [];
         foreach ($eventos as $ev) {
             if (isset($existentes[$ev['hash']])) {
                 continue;
@@ -236,7 +257,7 @@ class Rastreio
                 'date_creation'                => self::agora(),
             ]);
             $existentes[$ev['hash']] = true;
-            $novos++;
+            $novos[] = $ev['hash'];
         }
 
         return $novos;

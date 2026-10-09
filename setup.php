@@ -11,7 +11,7 @@ use Glpi\Plugin\Hooks;
 use GlpiPlugin\Postalplus\Menu;
 use GlpiPlugin\Postalplus\PerfilDireitos;
 
-define('PLUGIN_POSTALPLUS_VERSION', '0.3.0');
+define('PLUGIN_POSTALPLUS_VERSION', '1.0.0');
 define('PLUGIN_POSTALPLUS_MIN_GLPI', '11.0.0');
 define('PLUGIN_POSTALPLUS_MAX_GLPI', '11.0.99');
 
@@ -35,6 +35,9 @@ function plugin_init_postalplus()
     $PLUGIN_HOOKS[Hooks::MENU_TOADD]['postalplus'] = ['tools' => Menu::class];
 
     $PLUGIN_HOOKS[Hooks::ADD_CSS]['postalplus'] = ['css/postalplus.css'];
+
+    // Alertas em tela (toast) em todas as páginas do GLPI (ajax/alertas.php decide quem vê).
+    $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['postalplus'] = ['js/alertas.js'];
 }
 
 function plugin_version_postalplus()

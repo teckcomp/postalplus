@@ -78,7 +78,87 @@
         }
     }
 
+    /** "Testar rastreio de um código": resposta crua + classificação de cada evento. */
+    function diagnostico() {
+        var botao = document.getElementById('pp-diag-testar');
+        var campo = document.getElementById('pp-diag-codigo');
+        var caixa = document.getElementById('pp-diag-resultado');
+        if (!botao || !campo || !caixa) { return; }
+
+        function mostrar(r) {
+            caixa.innerHTML = '';
+            caixa.classList.remove('d-none');
+            var alerta = el('div', 'alert mb-2 ' + (r.ok ? 'alert-success' : 'alert-warning'));
+            alerta.setAttribute('data-pp-diag', r.ok ? 'ok' : 'falha');
+            var corpo = el('div', 'w-100');
+            corpo.appendChild(el('div', 'fw-semibold', r.ok ? ('Situação pelo plugin: ' + r.situacao) : ('Sem eventos: ' + (r.erro || ''))));
+            if (r.simulado) { corpo.appendChild(el('div', 'small', 'Resposta do simulador (PLUGIN_POSTALPLUS_SIMULADO ativo), não da API real.')); }
+            alerta.appendChild(corpo);
+            caixa.appendChild(alerta);
+            if (Array.isArray(r.eventos) && r.eventos.length) {
+                var tabela = el('table', 'table table-sm table-vcenter mb-2');
+                var thead = el('thead');
+                var tr = el('tr');
+                ['Data', 'Código', 'Tipo', 'Descrição', 'Local', 'Classificação'].forEach(function (t) { tr.appendChild(el('th', '', t)); });
+                thead.appendChild(tr);
+                tabela.appendChild(thead);
+                var tbody = el('tbody');
+                r.eventos.forEach(function (e) {
+                    var linha = el('tr');
+                    linha.appendChild(el('td', 'text-nowrap', formatarData(e.data)));
+                    linha.appendChild(el('td', 'font-monospace', e.codigo || ''));
+                    linha.appendChild(el('td', 'font-monospace', e.tipo || ''));
+                    linha.appendChild(el('td', '', e.descricao || ''));
+                    linha.appendChild(el('td', 'small', e.local || ''));
+                    linha.appendChild(el('td', '', e.rotulo + ' (' + e.situacao + (e.critico ? ', crítico: ' + e.critico : '') + ')'));
+                    tbody.appendChild(linha);
+                });
+                tabela.appendChild(tbody);
+                var wrap = el('div', 'table-responsive');
+                wrap.appendChild(tabela);
+                caixa.appendChild(wrap);
+            }
+            if (r.bruto) {
+                var det = el('details');
+                det.appendChild(el('summary', '', 'Resposta crua da API (objetos[0]) — copie e cole no chat para ajustar o mapeamento'));
+                var pre = el('pre', 'pp-diag-bruto', JSON.stringify(r.bruto, null, 2));
+                det.appendChild(pre);
+                caixa.appendChild(det);
+            }
+        }
+
+        function testar() {
+            var codigo = campo.value.replace(/\s+/g, '').toUpperCase();
+            campo.value = codigo;
+            if (!/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(codigo)) { mostrar({ ok: false, erro: 'Código inválido: 2 letras + 9 dígitos + 2 letras.' }); return; }
+            botao.disabled = true;
+            var original = botao.textContent;
+            botao.textContent = 'Consultando…';
+            var corpo = new URLSearchParams();
+            corpo.append('codigo', codigo);
+            fetch(botao.getAttribute('data-url'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-Glpi-Csrf-Token': csrf(),
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'Accept': 'application/json'
+                },
+                body: corpo.toString()
+            })
+                .then(function (resp) { return resp.text().then(function (t) { try { return JSON.parse(t); } catch (e) { return { ok: false, erro: 'Resposta inválida do servidor (HTTP ' + resp.status + ').' }; } }); })
+                .then(function (r) { guardarCsrf(r && r.csrf); mostrar(r || { ok: false, erro: 'Resposta vazia.' }); })
+                .catch(function () { mostrar({ ok: false, erro: 'Não foi possível falar com o GLPI.' }); })
+                .then(function () { botao.disabled = false; botao.textContent = original; });
+        }
+
+        botao.addEventListener('click', testar);
+        campo.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); testar(); } });
+    }
+
     function iniciar() {
+        diagnostico();
         var botao = document.getElementById('pp-testar');
         var caixa = document.getElementById('pp-resultado-teste');
         var form  = document.getElementById('pp-form-config');

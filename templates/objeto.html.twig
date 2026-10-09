@@ -38,11 +38,11 @@
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <button type="button" class="btn btn-outline-secondary" data-pp-consultar data-codigo="{{ o.codigo }}"
                     data-url="{{ tela.url_consultar }}" data-pp-resultado="pp-consulta-resultado"><i class="ti ti-refresh me-1"></i>Consultar agora</button>
-            <span class="d-inline-block" tabindex="0" title="Disponível no Bloco 8" data-pp-em-breve="8">
-                <button class="btn btn-outline-secondary" disabled>Registrar reclamação nos Correios</button>
-            </span>
-            <span class="d-inline-block" tabindex="0" title="Disponível no Bloco 9" data-pp-em-breve="9">
-                <button class="btn btn-primary" disabled><i class="ti ti-brand-whatsapp me-1"></i>Avisar destinatário (WhatsApp)</button>
+            {% if tela.pode_alterar and not o.encerrado %}
+                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#pp-modal-reclamacao" data-pp-reclamacao>Registrar reclamação nos Correios</button>
+            {% endif %}
+            <span class="d-inline-block" tabindex="0" title="Aviso por WhatsApp ao destinatário: em backlog (webhook do n8n)" data-pp-em-breve="whatsapp">
+                <button class="btn btn-outline-secondary" disabled><i class="ti ti-brand-whatsapp me-1"></i>Avisar destinatário (WhatsApp)</button>
             </span>
             {% if tela.pode_excluir %}
                 <form method="post" action="{{ tela.url_self }}" class="ms-auto" data-pp-excluir
@@ -53,7 +53,37 @@
                 </form>
             {% endif %}
         </div>
-        <div class="pp-sub mb-3" data-pp-em-breve-nota>Reclamação nos Correios e aviso por WhatsApp chegam nos Blocos 8 e 9.</div>
+        <div class="pp-sub mb-3" data-pp-em-breve-nota>Aviso por WhatsApp ao destinatário fica para depois da validação em produção (backlog).</div>
+
+        {% if tela.pode_alterar and not o.encerrado %}
+            <div class="modal fade" id="pp-modal-reclamacao" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form class="modal-content" method="post" action="{{ tela.url_self }}">
+                        <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="id" value="{{ o.id }}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Reclamação nos Correios · {{ o.codigo }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-secondary">A reclamação é aberta no site dos Correios (<a href="{{ tela.url_reclamacao_correios }}" target="_blank" rel="noopener">Fale com os Correios</a>, com o código {{ o.codigo }}). Registre aqui o protocolo para ficar no histórico do objeto{% if o.chamado %} e como acompanhamento no chamado #{{ o.chamado }}{% endif %}.</p>
+                            <div class="mb-3">
+                                <label class="form-label" for="pp-protocolo">Protocolo dos Correios</label>
+                                <input class="form-control" id="pp-protocolo" name="protocolo" maxlength="60" placeholder="opcional">
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label" for="pp-obs">Observação</label>
+                                <textarea class="form-control" id="pp-obs" name="observacao" rows="3" maxlength="2000" placeholder="O que foi reclamado / resposta dos Correios"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary" name="reclamacao" value="1">Registrar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
 
         <div id="pp-consulta-resultado" class="mb-3" aria-live="polite"></div>
 
@@ -101,7 +131,7 @@
                                 <div class="card-body pp-vazio" data-pp-vazio="alertas">
                                     <i class="ti ti-bell-off"></i>
                                     <div>Nenhum alerta disparado para este objeto.</div>
-                                    <div class="pp-sub">Os alertas são gerados pelas Regras de alerta a cada consulta (a partir do Bloco 7).</div>
+                                    <div class="pp-sub">Os alertas são gerados pelas Regras de alerta a cada consulta à API.</div>
                                 </div>
                             {% else %}
                                 <div class="list-group list-group-flush" data-pp-lista="alertas">
@@ -128,7 +158,7 @@
                                 <div class="card-body pp-vazio" data-pp-vazio="chamados">
                                     <i class="ti ti-ticket-off"></i>
                                     <div>Nenhum chamado vinculado a este objeto.</div>
-                                    <div class="pp-sub">O chamado é informado no cadastro; chamados abertos automaticamente por alerta aparecem aqui a partir do Bloco 8.</div>
+                                    <div class="pp-sub">O chamado é informado no cadastro; chamados abertos automaticamente por alerta também aparecem aqui.</div>
                                 </div>
                             {% else %}
                                 <div class="list-group list-group-flush" data-pp-lista="chamados">

@@ -516,7 +516,10 @@ class Objeto extends CommonDBTM
         $hoje     = date('Y-m-d', strtotime($_SESSION['glpi_currenttime'] ?? 'now'));
 
         // Rótulo da pílula: mais específico que a situação quando há evento (ex.: "Carteiro não atendido").
-        if (!empty($r['ultimo_evento_descricao'])) {
+        if (in_array($situacao, Motor::DERIVADAS, true)) {
+            // Atrasado / sem movimentação: calculados pelo motor de regras (Bloco 7).
+            $rotulo = Situacao::ROTULOS[$situacao];
+        } elseif (!empty($r['ultimo_evento_descricao'])) {
             $rotulo = Situacao::classificarEvento((string) $r['ultimo_evento_codigo'], (string) $r['ultimo_evento_tipo'], (string) $r['ultimo_evento_descricao'])['rotulo'];
         } elseif ($erro !== '') {
             $rotulo = str_contains($erro, 'SRO-020') ? 'Não encontrado' : 'Erro na consulta';
@@ -524,11 +527,19 @@ class Objeto extends CommonDBTM
             $rotulo = Situacao::ROTULOS[$situacao] ?? $situacao;
         }
 
-        // Prazo / alerta (as regras completas entram no Bloco 7).
+        // Prazo / alerta.
         $alerta = '—';
         $nivel  = '';
         $prazo  = null;
-        if ($situacao === 'aguardando_retirada' && !empty($r['prazo_retirada'])) {
+        if ($situacao === 'atrasado' && !empty($r['prazo_previsto'])) {
+            $dias   = max(1, (int) floor((strtotime($hoje) - strtotime((string) $r['prazo_previsto'])) / 86400));
+            $alerta = 'Previsto ' . substr($previsto, 0, 5) . " · $dias dia(s) de atraso";
+            $nivel  = 'atencao';
+        } elseif ($situacao === 'sem_movimentacao' && !empty($r['ultimo_evento_data'])) {
+            $dias   = (int) floor((strtotime($hoje) - strtotime(substr((string) $r['ultimo_evento_data'], 0, 10))) / 86400);
+            $alerta = "$dias dias sem novo evento";
+            $nivel  = 'critico';
+        } elseif ($situacao === 'aguardando_retirada' && !empty($r['prazo_retirada'])) {
             $ate       = (string) $r['prazo_retirada'];
             $total     = Situacao::PRAZO_RETIRADA_DIAS;
             $restantes = (int) floor((strtotime($ate) - strtotime($hoje)) / 86400);

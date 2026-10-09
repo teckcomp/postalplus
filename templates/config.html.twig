@@ -119,8 +119,10 @@
                         </div>
                     </div>
                     <div class="card-footer d-flex justify-content-end gap-2">
-                        <button type="button" class="btn btn-outline-secondary" disabled
-                                title="Chega com os alertas (Bloco 7) e o WhatsApp (Bloco 9)">Enviar notificação de teste</button>
+                        {% if tela.pode_alterar %}
+                            <button type="submit" class="btn btn-outline-secondary" name="testar_email" value="1"
+                                    title="Coloca um e-mail de teste na fila de notificações do GLPI para o E-mail da equipe SALVO">Enviar notificação de teste</button>
+                        {% endif %}
                         {% if tela.pode_alterar %}
                             <button type="submit" class="btn btn-primary" name="salvar" value="1">Salvar</button>
                         {% endif %}
@@ -203,6 +205,19 @@
                             {% endfor %}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                {# ---- Testar rastreio de um código (Bloco 11) ---- #}
+                <div class="card pp-card mb-3">
+                    <div class="card-header"><h3 class="card-title">Testar rastreio de um código</h3></div>
+                    <div class="card-body">
+                        <div class="text-secondary small mb-2">Consulta a API Rastro com as credenciais salvas e mostra a resposta crua (sem token) e como o plugin classifica cada evento. Não cadastra o objeto. Use para validar o mapeamento com códigos reais do contrato.</div>
+                        <div class="input-group">
+                            <input class="form-control font-monospace text-uppercase" id="pp-diag-codigo" maxlength="13" placeholder="AA123456789BR" autocomplete="off">
+                            <button type="button" class="btn btn-outline-primary" id="pp-diag-testar" data-url="{{ tela.url_diagnostico }}" {{ tela.pode_alterar ? '' : 'disabled' }}>Testar rastreio</button>
+                        </div>
+                        <div id="pp-diag-resultado" class="mt-3 d-none" aria-live="polite"></div>
                     </div>
                 </div>
 

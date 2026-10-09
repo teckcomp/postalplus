@@ -8,7 +8,7 @@
     } only %}
 
     <div class="alert alert-info py-2">
-        <div><i class="ti ti-info-circle me-1"></i>Os ajustes já ficam gravados. Os alertas passam a disparar quando o motor de regras entrar (Bloco 7).</div>
+        <div><i class="ti ti-info-circle me-1"></i>Cada alerta dispara uma vez por ocorrência. <strong>Tela</strong> = toast para os perfis da Configuração; <strong>E-mail equipe</strong> = fila de notificações do GLPI; <strong>Abrir chamado</strong> = acompanhamento no chamado vinculado ou chamado novo (categoria, grupo e prioridade ao lado). <strong>WhatsApp destinatário</strong> ainda não envia (backlog).</div>
     </div>
 
     <form method="post" action="{{ nav.web }}/front/regras.php" id="pp-form-regras">
@@ -56,8 +56,8 @@
                                 <div class="d-flex align-items-center flex-wrap mt-3">
                                     <span class="text-secondary small me-2 mb-1">Avisar por:</span>
                                     {% for canal, rotulo in {'canal_tela': 'Tela', 'canal_email': 'E-mail equipe', 'canal_whatsapp': 'WhatsApp destinatário', 'canal_chamado': r.chamado} %}
-                                        <label class="pp-canal">
-                                            <input class="form-check-input" type="checkbox" name="{{ n }}[{{ canal }}]" value="1" {{ attribute(r, canal) ? 'checked' : '' }} {{ bloq }}>{{ rotulo }}
+                                        <label class="pp-canal" {% if canal == 'canal_whatsapp' %}title="Em backlog: o envio por WhatsApp ainda não está disponível"{% endif %}>
+                                            <input class="form-check-input" type="checkbox" name="{{ n }}[{{ canal }}]" value="1" {{ attribute(r, canal) ? 'checked' : '' }} {{ bloq }}>{{ rotulo }}{% if canal == 'canal_whatsapp' %} <span class="badge bg-secondary-lt">backlog</span>{% endif %}
                                         </label>
                                     {% endfor %}
                                 </div>
@@ -102,8 +102,8 @@
                             Olá <code>{nome}</code>! Sua encomenda <code>{codigo}</code> está aguardando retirada em <code>{local}</code>
                             até <code>{data_limite}</code>. Leve um documento com foto e o código do objeto.
                         </div>
-                        <div class="text-secondary small mb-2">Variáveis: {nome}, {codigo}, {local}, {data_limite}, {status}. Enviada pelo webhook do n8n (Configuração).</div>
-                        <button type="button" class="btn btn-outline-secondary" disabled title="Modelos editáveis chegam no Bloco 9">Editar modelos</button>
+                        <div class="text-secondary small mb-2">Variáveis: {nome}, {codigo}, {local}, {data_limite}, {status}. Envio pelo webhook do n8n (Configuração) — em backlog até a validação em produção.</div>
+                        <button type="button" class="btn btn-outline-secondary" disabled title="Em backlog (envio por WhatsApp)">Editar modelos</button>
                     </div>
                 </div>
 

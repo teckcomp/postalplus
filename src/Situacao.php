@@ -6,8 +6,10 @@
  * Slugs gravados em glpi_plugin_postalplus_objetos.situacao. Bloco 3: classificarEvento() mapeia o
  * evento SRO (codigo/tipo/descricao) para situação + rótulo da pílula + slug de evento crítico.
  *
- * O mapeamento olha primeiro a DESCRIÇÃO (texto estável e conhecido) e só depois os códigos SRO,
- * porque a tabela completa de codigo/tipo ainda precisa ser validada na API de homologação.
+ * O mapeamento olha primeiro a DESCRIÇÃO (texto estável e conhecido) e só depois os códigos SRO.
+ * Formato confirmado no manual CWS (codigo, tipo, dtHrCriado, descricao, detalhe, unidade/unidadeDestino
+ * com tipo + endereco{cidade, uf}). A tabela completa codigo/tipo se ajusta no piloto com a API real
+ * (ferramenta "Testar rastreio de um código" na Configuração).
  *
  * @copyright Teckcomp
  * @license   GPLv3+
@@ -111,11 +113,17 @@ class Situacao
 
         $problemas = [
             ['extraviad', 'Objeto extraviado', 'extraviado'],
+            ['roubad', 'Objeto roubado', 'extraviado'],
             ['avariad', 'Objeto avariado', 'avariado'],
             ['carteiro nao atendido', 'Carteiro não atendido', 'carteiro_nao_atendido'],
+            ['destinatario ausente', 'Carteiro não atendido', 'carteiro_nao_atendido'],
+            ['tentativa de entrega nao efetuada', 'Tentativa de entrega não efetuada', 'carteiro_nao_atendido'],
+            ['entrega nao efetuada', 'Entrega não efetuada', 'carteiro_nao_atendido'],
             ['endereco incorreto', 'Endereço incorreto', 'endereco_incorreto'],
             ['endereco insuficiente', 'Endereço incorreto', 'endereco_incorreto'],
             ['mudou-se', 'Destinatário mudou-se', 'destinatario_mudou'],
+            ['destinatario desconhecido', 'Destinatário desconhecido', 'endereco_incorreto'],
+            ['nao procurado', 'Não procurado', 'devolucao'],
             ['recusad', 'Recusado', 'recusado'],
             ['entregue ao remetente', 'Devolvido ao remetente', 'devolucao'],
             ['devolucao ao remetente', 'Em devolução', 'devolucao'],
@@ -128,13 +136,13 @@ class Situacao
             }
         }
 
-        if (str_contains($d, 'aguardando retirada') || $codigo === 'LDI') {
+        if (str_contains($d, 'aguardando retirada') || str_contains($d, 'disponivel para retirada') || $codigo === 'LDI') {
             return ['situacao' => 'aguardando_retirada', 'rotulo' => 'Aguardando retirada', 'critico' => null];
         }
         if (str_contains($d, 'entregue ao destinatario') || (in_array($codigo, ['BDE', 'BDI', 'BDR'], true) && $tipo === '01')) {
             return ['situacao' => 'entregue', 'rotulo' => 'Entregue', 'critico' => null];
         }
-        if (str_contains($d, 'saiu para entrega') || $codigo === 'OEC') {
+        if (str_contains($d, 'saiu para entrega') || str_contains($d, 'em rota de entrega') || $codigo === 'OEC') {
             return ['situacao' => 'saiu_entrega', 'rotulo' => 'Saiu para entrega', 'critico' => null];
         }
         if ($codigo === 'PO' || str_contains($d, 'objeto postado')) {
