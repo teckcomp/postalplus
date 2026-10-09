@@ -1,4 +1,4 @@
-{# Postal+ — Detalhe do objeto (Bloco 2: real sem eventos ou demonstração). Variáveis: nav, tela #}
+{# Postal+ — Detalhe do objeto (Bloco 3: real com eventos da API ou demonstração). Variáveis: nav, tela #}
 {% set o = tela.objeto %}
 <div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="objeto">
     <a href="{{ tela.url_painel }}" class="d-inline-block mb-2"><i class="ti ti-arrow-left me-1"></i>Voltar ao painel</a>
@@ -13,20 +13,27 @@
             <h1 class="pp-titulo pp-codigo mb-0" data-pp-objeto="{{ o.codigo }}">{{ o.codigo }}</h1>
             <span class="pp-st pp-st-{{ o.situacao }}">{{ o.rotulo }}</span>
         </div>
-        <div class="text-secondary mb-3">{{ o.servico }} · postado em {{ o.postagem }}{% if tela.real and o.cadastrado %} · cadastrado em {{ o.cadastrado }}{% endif %}</div>
+        <div class="text-secondary mb-3">{{ o.servico }} · postado em {{ o.postagem }}{% if tela.real %} · {{ o.consultado ? 'última consulta à API em ' ~ o.ultima_consulta : 'ainda não consultado na API' }}{% endif %}</div>
 
         {% if tela.real %}
-            <div class="alert alert-info" data-pp-real="1">
-                <div><strong>Ainda não consultado na API Rastro.</strong> A consulta (botão “Consultar agora” e linha do tempo) chega no Bloco 3.</div>
-            </div>
+            {% if o.erro_consulta %}
+                <div class="alert alert-warning" data-pp-erro-consulta>
+                    <div><strong>Última consulta sem sucesso:</strong> {{ o.erro_consulta }}</div>
+                </div>
+            {% endif %}
         {% else %}
             {% include '@postalplus/_demo.html.twig' with {
-                texto: 'Linha do tempo e alertas do mockup. Dados reais no Bloco 6; ações nos Blocos 3, 8 e 9.'
+                texto: 'Linha do tempo e alertas do mockup. Objetos cadastrados já mostram o rastreio real; reclamação e WhatsApp nos Blocos 8 e 9.'
             } only %}
         {% endif %}
 
         <div class="d-flex flex-wrap gap-2 mb-3">
-            <button class="btn btn-outline-secondary" disabled title="Bloco 3"><i class="ti ti-refresh me-1"></i>Consultar agora</button>
+            {% if tela.real %}
+                <button type="button" class="btn btn-outline-secondary" data-pp-consultar data-codigo="{{ o.codigo }}"
+                        data-url="{{ tela.url_consultar }}" data-pp-resultado="pp-consulta-resultado"><i class="ti ti-refresh me-1"></i>Consultar agora</button>
+            {% else %}
+                <button class="btn btn-outline-secondary" disabled title="Objeto de demonstração"><i class="ti ti-refresh me-1"></i>Consultar agora</button>
+            {% endif %}
             <button class="btn btn-outline-secondary" disabled title="Bloco 8">Registrar reclamação nos Correios</button>
             <button class="btn btn-primary" disabled title="Bloco 9"><i class="ti ti-brand-whatsapp me-1"></i>Avisar destinatário (WhatsApp)</button>
             {% if tela.pode_excluir %}
@@ -38,6 +45,8 @@
                 </form>
             {% endif %}
         </div>
+
+        <div id="pp-consulta-resultado" class="mb-3" aria-live="polite"></div>
 
         <ul class="nav nav-tabs mb-3" role="tablist">
             <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#pp-aba-rastreio" role="tab">Rastreamento <span class="badge bg-secondary-lt ms-1">{{ o.eventos|length }}</span></a></li>
@@ -55,7 +64,7 @@
                             <div class="card-header"><h3 class="card-title">Eventos do rastreio <span class="text-secondary fw-normal">· fonte: API Rastro (SRO)</span></h3></div>
                             <div class="card-body">
                                 {% if o.eventos|length == 0 %}
-                                    <div class="text-secondary" data-pp-sem-eventos>Nenhum evento ainda — o objeto não foi consultado na API.</div>
+                                    <div class="text-secondary" data-pp-sem-eventos>{{ tela.real and o.consultado ? 'Os Correios ainda não devolveram eventos para este objeto.' : 'Nenhum evento ainda — use “Consultar agora”.' }}</div>
                                 {% endif %}
                                 <ul class="pp-timeline">
                                     {% for e in o.eventos %}
@@ -156,3 +165,4 @@
         </div>
     {% endif %}
 </div>
+<script src="{{ nav.web }}/js/consultar.js?v={{ nav.v }}"></script>

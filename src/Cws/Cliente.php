@@ -1,7 +1,8 @@
 <?php
 
 /**
- * Postal+ — cliente CWS (Correios Web Services): token por cartão de postagem e teste de conexão.
+ * Postal+ — cliente CWS (Correios Web Services): token por cartão de postagem, teste de conexão e
+ * consulta de objeto na API Rastro (Bloco 3).
  *
  * Token: POST {base}/token/v1/autentica/cartaopostagem, Basic (usuário Meu Correios : código de acesso),
  * corpo {"numero": cartão, "contrato": opcional}. Resposta 201 com token, expiraEm e cartaoPostagem.api.
@@ -211,6 +212,53 @@ class Cliente
         }
 
         return ['liberada' => null, 'status' => $r['status'], 'mensagem' => 'Resposta inesperada da API Rastro (HTTP ' . $r['status'] . ').' . ($msg !== '' ? " $msg" : '')];
+    }
+
+    /**
+     * Consulta um objeto na API Rastro com todos os eventos (resultado=T).
+     *
+     * Devolve o item de "objetos" da resposta: com "eventos" (mais recente primeiro) ou com "mensagem"
+     * (ex.: "SRO-020: Objeto não encontrado"). Token recusado com token do cache => renova uma vez.
+     *
+     * @return array<string,mixed>
+     * @throws CwsErro
+     */
+    public function rastrear(string $codigo): array
+    {
+        $t = $this->obterToken();
+        $r = $this->getRastro($codigo, $t['token']);
+        if (in_array($r['status'], [401, 403], true) && !$t['novo']) {
+            $t = $this->obterToken(true);
+            $r = $this->getRastro($codigo, $t['token']);
+        }
+
+        if ($r['status'] === 0) {
+            throw new CwsErro('Sem resposta de ' . parse_url($this->base(), PHP_URL_HOST) . ': ' . ($r['erro'] ?: 'falha de rede') . '.', 'rede');
+        }
+
+        $dados = json_decode($r['corpo'], true);
+        $msg   = is_array($dados) ? $this->primeiraMensagem($dados) : '';
+
+        if (in_array($r['status'], [401, 403], true)) {
+            throw new CwsErro('Token recusado pela API Rastro (HTTP ' . $r['status'] . '): verifique no CWS se a API Rastro está liberada para este cartão.', 'rastro', $r['status']);
+        }
+        if (($r['status'] >= 200 && $r['status'] < 300) || $r['status'] === 404) {
+            if (is_array($dados) && isset($dados['objetos'][0]) && is_array($dados['objetos'][0])) {
+                return $dados['objetos'][0];
+            }
+        }
+
+        throw new CwsErro('Resposta inesperada da API Rastro (HTTP ' . $r['status'] . ').' . ($msg !== '' ? " $msg" : ''), 'rastro', $r['status']);
+    }
+
+    /** @return array{status:int, corpo:string, erro:?string} */
+    private function getRastro(string $codigo, string $token): array
+    {
+        return $this->transporte->requisitar(
+            'GET',
+            $this->base() . self::CAMINHO_RASTRO . rawurlencode($codigo) . '?resultado=T',
+            ['Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json']
+        );
     }
 
     private function mensagemErroToken(int $status, array $dados): string

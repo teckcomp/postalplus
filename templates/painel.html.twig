@@ -1,4 +1,4 @@
-{# Postal+ — Painel (Bloco 2: objetos reais + demonstração). Variáveis: nav, tela #}
+{# Postal+ — Painel (Bloco 3: objetos reais consultados + demonstração). Variáveis: nav, tela #}
 <div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="painel">
     {% include '@postalplus/_nav.html.twig' with {
         nav: nav,
@@ -7,7 +7,7 @@
     } only %}
 
     {% include '@postalplus/_demo.html.twig' with {
-        texto: 'Os objetos marcados “demo” são do mockup e saem no Bloco 5. Os que você cadastrar aparecem no topo, como “Não consultado” até o Bloco 3.'
+        texto: 'Os objetos marcados “demo” são do mockup e saem no Bloco 5. Os que você cadastrar aparecem no topo, com o rastreio da API.'
     } only %}
 
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
@@ -15,7 +15,10 @@
             <span class="input-icon-addon"><i class="ti ti-search"></i></span>
             <input type="search" class="form-control" id="pp-busca" placeholder="Código, destinatário ou chamado" aria-label="Buscar">
         </div>
-        <button type="button" class="btn btn-outline-secondary" disabled title="Chega com o cliente da API Rastro (Bloco 3)">
+        <button type="button" class="btn btn-outline-secondary" id="pp-consultar-todos" data-pp-consultar
+                data-url="{{ tela.url_consultar }}" data-pp-resultado="pp-consulta-resultado"
+                {{ tela.consultaveis > 0 ? '' : 'disabled' }}
+                title="{{ tela.consultaveis > 0 ? 'Consulta na API Rastro os ' ~ tela.consultaveis ~ ' objeto(s) em acompanhamento (não inclui demo nem entregues)' : 'Nenhum objeto cadastrado em acompanhamento' }}">
             <i class="ti ti-refresh me-1"></i>Consultar agora
         </button>
         {% if tela.pode_criar %}
@@ -26,7 +29,9 @@
         </span>
     </div>
 
-    <div class="row g-2 mb-3" id="pp-cards">
+    <div id="pp-consulta-resultado" aria-live="polite"></div>
+
+    <div class="row g-2 mb-3 mt-1" id="pp-cards">
         {% for chave, card in tela.cards %}
             <div class="col-6 col-md-4 col-xl-2">
                 <button type="button" class="pp-kpi" data-pp-card="{{ chave }}" aria-pressed="false">
@@ -92,3 +97,4 @@
     </div>
 </div>
 <script src="{{ nav.web }}/js/painel.js?v={{ nav.v }}"></script>
+<script src="{{ nav.web }}/js/consultar.js?v={{ nav.v }}"></script>

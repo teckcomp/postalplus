@@ -4,6 +4,7 @@
  * Postal+ — Adicionar objetos (individual e em lote).
  *
  * Bloco 2: o formulário "Objeto individual" grava de verdade (POST nesta mesma página).
+ * Bloco 3: logo depois de gravar, consulta o objeto na API Rastro (falha na consulta não desfaz o cadastro).
  * A importação em lote continua só classificando no navegador (gravação no Bloco 10).
  *
  * @copyright Teckcomp
@@ -16,6 +17,7 @@ use GlpiPlugin\Postalplus\Demo;
 use GlpiPlugin\Postalplus\Menu;
 use GlpiPlugin\Postalplus\Objeto;
 use GlpiPlugin\Postalplus\PerfilDireitos;
+use GlpiPlugin\Postalplus\Rastreio;
 
 Session::checkRight(PerfilDireitos::RIGHT_OBJETO, CREATE);
 
@@ -35,11 +37,20 @@ if (isset($_POST['salvar_individual'])) {
             $erros[] = 'Sem permissão para cadastrar objetos nesta entidade.';
         } elseif ($objeto->add($dados)) {
             Configuracao::log("objeto {$dados['codigo']} cadastrado (id {$objeto->getID()}) por " . Session::getLoginUserID());
-            Session::addMessageAfterRedirect(
-                htmlescape("Objeto {$dados['codigo']} cadastrado. Ele aparece como \"Não consultado\" até a consulta à API (Bloco 3)."),
-                false,
-                INFO
-            );
+            try {
+                $objeto->getFromDB($objeto->getID());
+                $consulta = Rastreio::doGlpi()->consultar([$objeto->fields], 'cadastro');
+                $item     = $consulta['itens'][0] ?? ['ok' => false, 'erro' => 'sem resposta'];
+                $texto    = $item['ok']
+                    ? "Objeto {$dados['codigo']} cadastrado e consultado: " . ($item['rotulo'] ?? 'ok') . '.'
+                    : "Objeto {$dados['codigo']} cadastrado, mas a consulta à API falhou: {$item['erro']}";
+                $tipo     = $item['ok'] ? INFO : WARNING;
+            } catch (\Throwable $e) {
+                Configuracao::log('consulta no cadastro: exceção ' . $e::class . ' ' . $e->getMessage());
+                $texto = "Objeto {$dados['codigo']} cadastrado, mas a consulta à API falhou (ver files/_log/postalplus.log).";
+                $tipo  = WARNING;
+            }
+            Session::addMessageAfterRedirect(htmlescape($texto), false, $tipo);
             Html::redirect($nav['web'] . '/front/objeto.php?codigo=' . rawurlencode($dados['codigo']));
         } else {
             $erros[] = 'Não foi possível gravar o objeto. Veja a mensagem do GLPI e o log files/_log/postalplus.log.';

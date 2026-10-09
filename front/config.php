@@ -47,7 +47,7 @@ foreach ($DB->request(['SELECT' => ['id', 'name'], 'FROM' => 'glpi_profiles', 'W
     $perfis[] = ['id' => (int) $p['id'], 'nome' => (string) $p['name']];
 }
 
-// Últimas execuções da consulta (preenchidas a partir do Bloco 4).
+// Últimas execuções da consulta (manual/cadastro desde o Bloco 3; automática no Bloco 4).
 $execucoes = [];
 foreach ($DB->request(['FROM' => 'glpi_plugin_postalplus_consultas', 'ORDER' => 'date_start DESC', 'LIMIT' => 10]) as $e) {
     $execucoes[] = [

@@ -1,4 +1,4 @@
-{# Postal+ — Adicionar objetos (Bloco 2: individual grava; lote só classifica). Variáveis: nav, tela #}
+{# Postal+ — Adicionar objetos (individual grava e consulta; lote só classifica). Variáveis: nav, tela #}
 {% set f = tela.form %}
 <div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="adicionar">
     {% include '@postalplus/_nav.html.twig' with {
@@ -90,9 +90,8 @@
                     </label>
                 </div>
                 <div class="card-footer d-flex justify-content-end align-items-center gap-2">
-                    <span class="text-secondary small me-auto">A consulta à API chega no Bloco 3: por enquanto o objeto é só gravado.</span>
                     <a class="btn btn-outline-secondary" href="{{ nav.web }}/front/painel.php">Cancelar</a>
-                    <button type="submit" class="btn btn-primary" name="salvar_individual" value="1" id="pp-salvar">Salvar</button>
+                    <button type="submit" class="btn btn-primary" name="salvar_individual" value="1" id="pp-salvar">Salvar e consultar agora</button>
                 </div>
             </form>
         </div>

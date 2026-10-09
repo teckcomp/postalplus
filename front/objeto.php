@@ -3,8 +3,8 @@
 /**
  * Postal+ — Detalhe do objeto (linha do tempo, prazo de retirada, abas).
  *
- * Bloco 2: objeto cadastrado mostra os dados gravados (sem eventos até o Bloco 3) e pode ser
- * excluído (direito DELETE). Códigos da demonstração continuam mostrando o mockup até o Bloco 6.
+ * Objeto cadastrado: dados gravados + linha do tempo com os eventos da API Rastro (Bloco 3), botão
+ * "Consultar agora" e Excluir (direito DELETE). Códigos da demonstração mostram o mockup até o Bloco 6.
  *
  * @copyright Teckcomp
  * @license   GPLv3+
@@ -44,8 +44,9 @@ $real   = false;
 if (Situacao::codigoValido($codigo)) {
     $item = Objeto::buscarVisivel($codigo);
     if ($item) {
-        $objeto = Objeto::paraTela($item->fields);
-        $real   = true;
+        $objeto            = Objeto::paraTela($item->fields);
+        $objeto['eventos'] = Objeto::eventosParaTela((int) $item->getID());
+        $real              = true;
     } else {
         $objeto = Demo::objeto($codigo);
         if ($objeto) {
@@ -66,6 +67,7 @@ TemplateRenderer::getInstance()->display('@postalplus/objeto.html.twig', [
         'real'         => $real,
         'pode_excluir' => $real && Session::haveRight(PerfilDireitos::RIGHT_OBJETO, DELETE),
         'url_self'     => $nav['web'] . '/front/objeto.php',
+        'url_consultar'=> $nav['web'] . '/ajax/consultar.php',
         'url_painel'   => $nav['web'] . '/front/painel.php',
         'url_ticket'   => Ticket::getFormURL() . '?id=',
     ],

@@ -5,7 +5,8 @@
  *
  * Bloco 2: cadastro individual. Destinatário = cliente/empresa; "Responsável pelo recebimento"
  * (destinatario_contato) = pessoa que recebe no cliente — WhatsApp e e-mail são dessa pessoa.
- * O objeto nasce em situação "nao_consultado"; a consulta à API Rastro chega no Bloco 3.
+ * O objeto nasce em situação "nao_consultado"; a consulta à API Rastro (Bloco 3, classe Rastreio)
+ * grava eventos e atualiza situação, último evento e prazos.
  *
  * @copyright Teckcomp
  * @license   GPLv3+
@@ -302,6 +303,54 @@ class Objeto extends CommonDBTM
     }
 
     /**
+     * Eventos gravados, mais recente primeiro, no formato da linha do tempo do Detalhe.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public static function eventosParaTela(int $id): array
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $lista = [];
+        foreach ($DB->request([
+            'FROM'  => 'glpi_plugin_postalplus_eventos',
+            'WHERE' => ['plugin_postalplus_objetos_id' => $id],
+            'ORDER' => ['data_evento DESC', 'id DESC'],
+        ]) as $e) {
+            $c  = Situacao::classificarEvento((string) $e['codigo'], (string) $e['tipo'], (string) $e['descricao']);
+            $ts = $e['data_evento'] ? strtotime((string) $e['data_evento']) : 0;
+            $item = [
+                'data'   => $ts ? date('d/m', $ts) : '',
+                'hora'   => $ts ? date('H:i', $ts) : '',
+                'titulo' => (string) $e['descricao'],
+                'local'  => Rastreio::localDoEvento($e),
+                'cor'    => Situacao::corDoEvento($c['situacao'], $c['rotulo']),
+                'atual'  => $lista === [],
+            ];
+            if (!empty($e['detalhe'])) {
+                $item['nota'] = (string) $e['detalhe'];
+            }
+            $lista[] = $item;
+        }
+
+        return $lista;
+    }
+
+    /**
+     * Objetos visíveis que ainda faz sentido consultar (ativos e não finalizados).
+     *
+     * @return list<array<string,mixed>>
+     */
+    public static function listarParaConsulta(int $limite): array
+    {
+        return array_slice(array_values(array_filter(
+            self::listarVisiveis(),
+            static fn($r) => (int) $r['is_active'] === 1 && !in_array($r['situacao'], Situacao::FINAIS, true)
+        )), 0, $limite);
+    }
+
+    /**
      * Linha da tabela no mesmo formato dos dados de demonstração (painel e detalhe usam o mesmo template).
      *
      * @param array<string,mixed> $r
@@ -324,6 +373,44 @@ class Objeto extends CommonDBTM
 
         $previsto = $data($r['prazo_previsto'] ?? null, 'd/m/Y');
         $situacao = (string) $r['situacao'];
+        $erro     = (string) ($r['erro_consulta'] ?? '');
+        $hoje     = date('Y-m-d', strtotime($_SESSION['glpi_currenttime'] ?? 'now'));
+
+        // Rótulo da pílula: mais específico que a situação quando há evento (ex.: "Carteiro não atendido").
+        if (!empty($r['ultimo_evento_descricao'])) {
+            $rotulo = Situacao::classificarEvento((string) $r['ultimo_evento_codigo'], (string) $r['ultimo_evento_tipo'], (string) $r['ultimo_evento_descricao'])['rotulo'];
+        } elseif ($erro !== '') {
+            $rotulo = str_contains($erro, 'SRO-020') ? 'Não encontrado' : 'Erro na consulta';
+        } else {
+            $rotulo = Situacao::ROTULOS[$situacao] ?? $situacao;
+        }
+
+        // Prazo / alerta (as regras completas entram no Bloco 7).
+        $alerta = '—';
+        $nivel  = '';
+        $prazo  = null;
+        if ($situacao === 'aguardando_retirada' && !empty($r['prazo_retirada'])) {
+            $ate       = (string) $r['prazo_retirada'];
+            $total     = Situacao::PRAZO_RETIRADA_DIAS;
+            $restantes = (int) floor((strtotime($ate) - strtotime($hoje)) / 86400);
+            $chegou    = date('Y-m-d', strtotime("$ate -$total days"));
+            $prazo     = [
+                'restantes'  => max(0, $restantes),
+                'chegou'     => date('d/m', strtotime($chegou)),
+                'ate'        => date('d/m/Y', strtotime($ate)),
+                'decorridos' => min($total, max(0, $total - $restantes)),
+                'total'      => $total,
+            ];
+            $alerta = 'Retirar até ' . date('d/m', strtotime($ate)) . ($restantes >= 0 ? " · faltam $restantes dia(s)" : ' · prazo esgotado');
+            $nivel  = $restantes <= 2 ? ($restantes < 0 ? 'critico' : 'atencao') : '';
+        } elseif ($situacao === 'entregue') {
+            $alerta = 'Entregue' . (!empty($r['ultimo_evento_data']) ? ' em ' . date('d/m', strtotime((string) $r['ultimo_evento_data'])) : '');
+        } elseif ($erro !== '' && empty($r['ultimo_evento_descricao'])) {
+            $alerta = str_contains($erro, 'SRO-020') ? 'Sem registro nos Correios' : mb_strimwidth($erro, 0, 60, '…');
+            $nivel  = 'atencao';
+        } elseif ($previsto !== '') {
+            $alerta = 'Previsto ' . substr($previsto, 0, 5);
+        }
 
         return [
             'id'             => (int) $r['id'],
@@ -331,25 +418,28 @@ class Objeto extends CommonDBTM
             'codigo'         => (string) $r['codigo'],
             'servico'        => (string) ($r['servico'] ?: 'Serviço a confirmar'),
             'situacao'       => $situacao,
-            'rotulo'         => Situacao::ROTULOS[$situacao] ?? $situacao,
-            'evento'         => (string) ($r['ultimo_evento_descricao'] ?: 'Aguardando a primeira consulta à API'),
+            'rotulo'         => $rotulo,
+            'evento'         => (string) ($r['ultimo_evento_descricao'] ?: (empty($r['ultima_consulta']) ? 'Aguardando a primeira consulta à API' : 'Nenhum evento devolvido pelos Correios')),
             'local'          => (string) ($r['ultimo_evento_local'] ?? ''),
-            'atualizado'     => $data($r['ultima_consulta'] ?? null, 'd/m H:i') ?: '—',
-            'alerta'         => $previsto !== '' ? 'Previsto ' . substr($previsto, 0, 5) : '—',
-            'alerta_nivel'   => '',
+            'atualizado'     => $data($r['ultimo_evento_data'] ?? null, 'd/m H:i') ?: '—',
+            'alerta'         => $alerta,
+            'alerta_nivel'   => $nivel,
             'destinatario'   => (string) ($r['destinatario_nome'] ?: '—'),
             'contato'        => (string) ($r['destinatario_contato'] ?? ''),
             'whatsapp'       => self::formatarWhatsapp($r['destinatario_whatsapp'] ?? ''),
             'email'          => (string) ($r['destinatario_email'] ?? ''),
             'cidade'         => (string) ($r['destinatario_cidade'] ?? ''),
-            'retirada'       => '',
+            'retirada'       => $situacao === 'aguardando_retirada' ? (string) ($r['ultimo_evento_local'] ?? '') : '',
             'chamado'        => (int) $r['tickets_id'],
             'chamado_titulo' => $chamadoTitulo,
             'postagem'       => $data($r['data_postagem'] ?? null, 'd/m/Y') ?: 'data não informada',
             'postagem_local' => '',
             'previsto'       => $previsto ?: '—',
-            'prazo_retirada' => null,
+            'prazo_retirada' => $prazo,
             'eventos'        => [],
+            'ultima_consulta'=> $data($r['ultima_consulta'] ?? null, 'd/m/Y H:i'),
+            'erro_consulta'  => $erro,
+            'consultado'     => !empty($r['ultima_consulta']),
             'alertas'        => [],
             'entidade'       => (string) Dropdown::getDropdownName('glpi_entities', (int) $r['entities_id']),
             'responsavel'    => (int) $r['users_id'] > 0 ? (string) Dropdown::getDropdownName('glpi_users', (int) $r['users_id']) : '—',

@@ -188,11 +188,11 @@
                                     <td>{{ e.objetos }}</td>
                                     <td>{{ e.novos }}</td>
                                     <td>{{ e.erros }}</td>
-                                    <td class="{{ e.erros > 0 ? 'text-orange' : 'text-green' }}">{{ e.resultado }}</td>
+                                    <td class="{{ e.erros > 0 ? 'text-orange' : 'text-green' }}">{{ e.resultado }}<div class="pp-sub" data-pp-origem="{{ e.origem }}">{{ {'manual': 'Consultar agora', 'cadastro': 'no cadastro', 'cron': 'automática'}[e.origem] ?? e.origem }}</div></td>
                                 </tr>
                             {% else %}
                                 <tr><td colspan="5" class="text-secondary text-center py-4" data-pp-execucoes="vazio">
-                                    Nenhuma execução ainda. A consulta automática entra no Bloco 4.
+                                    Nenhuma execução ainda. Use “Consultar agora” no painel; a consulta automática entra no Bloco 4.
                                 </td></tr>
                             {% endfor %}
                             </tbody>

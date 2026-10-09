@@ -3,7 +3,11 @@
 /**
  * Postal+ — situações do objeto e agrupamento dos cards do painel.
  *
- * Slugs gravados em glpi_plugin_postalplus_objetos.situacao. O mapeamento SRO -> slug entra no Bloco 3.
+ * Slugs gravados em glpi_plugin_postalplus_objetos.situacao. Bloco 3: classificarEvento() mapeia o
+ * evento SRO (codigo/tipo/descricao) para situação + rótulo da pílula + slug de evento crítico.
+ *
+ * O mapeamento olha primeiro a DESCRIÇÃO (texto estável e conhecido) e só depois os códigos SRO,
+ * porque a tabela completa de codigo/tipo ainda precisa ser validada na API de homologação.
  *
  * @copyright Teckcomp
  * @license   GPLv3+
@@ -73,5 +77,78 @@ class Situacao
     public static function codigoValido(string $codigo): bool
     {
         return (bool) preg_match('/^[A-Z]{2}\d{9}[A-Z]{2}$/', $codigo);
+    }
+
+    /** Dias corridos para retirada na agência (mockup: chegou 30/09, retirar até 07/10). A validar. */
+    public const PRAZO_RETIRADA_DIAS = 7;
+
+    /** Situações em que o acompanhamento terminou (não consultar mais). */
+    public const FINAIS = ['entregue'];
+
+    /**
+     * Classifica um evento SRO.
+     *
+     * @return array{situacao:string, rotulo:string, critico:?string}
+     */
+    public static function classificarEvento(string $codigo, string $tipo, string $descricao): array
+    {
+        $d      = self::semAcento(mb_strtolower($descricao));
+        $codigo = strtoupper(trim($codigo));
+        $tipo   = trim($tipo);
+
+        $problemas = [
+            ['extraviad', 'Objeto extraviado', 'extraviado'],
+            ['avariad', 'Objeto avariado', 'avariado'],
+            ['carteiro nao atendido', 'Carteiro não atendido', 'carteiro_nao_atendido'],
+            ['endereco incorreto', 'Endereço incorreto', 'endereco_incorreto'],
+            ['endereco insuficiente', 'Endereço incorreto', 'endereco_incorreto'],
+            ['mudou-se', 'Destinatário mudou-se', 'destinatario_mudou'],
+            ['recusad', 'Recusado', 'recusado'],
+            ['entregue ao remetente', 'Devolvido ao remetente', 'devolucao'],
+            ['devolucao ao remetente', 'Em devolução', 'devolucao'],
+            ['devolvido ao remetente', 'Em devolução', 'devolucao'],
+            ['em devolucao', 'Em devolução', 'devolucao'],
+        ];
+        foreach ($problemas as [$trecho, $rotulo, $critico]) {
+            if (str_contains($d, $trecho)) {
+                return ['situacao' => 'problema', 'rotulo' => $rotulo, 'critico' => $critico];
+            }
+        }
+
+        if (str_contains($d, 'aguardando retirada') || $codigo === 'LDI') {
+            return ['situacao' => 'aguardando_retirada', 'rotulo' => 'Aguardando retirada', 'critico' => null];
+        }
+        if (str_contains($d, 'entregue ao destinatario') || (in_array($codigo, ['BDE', 'BDI', 'BDR'], true) && $tipo === '01')) {
+            return ['situacao' => 'entregue', 'rotulo' => 'Entregue', 'critico' => null];
+        }
+        if (str_contains($d, 'saiu para entrega') || $codigo === 'OEC') {
+            return ['situacao' => 'saiu_entrega', 'rotulo' => 'Saiu para entrega', 'critico' => null];
+        }
+        if ($codigo === 'PO' || str_contains($d, 'objeto postado')) {
+            return ['situacao' => 'em_transito', 'rotulo' => 'Postado', 'critico' => null];
+        }
+
+        return ['situacao' => 'em_transito', 'rotulo' => 'Em trânsito', 'critico' => null];
+    }
+
+    public static function semAcento(string $s): string
+    {
+        return strtr($s, [
+            'á' => 'a', 'à' => 'a', 'â' => 'a', 'ã' => 'a', 'ä' => 'a', 'é' => 'e', 'ê' => 'e', 'è' => 'e',
+            'í' => 'i', 'ì' => 'i', 'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ò' => 'o', 'ú' => 'u', 'ü' => 'u', 'ç' => 'c',
+        ]);
+    }
+
+    /** Cor do ponto na linha do tempo do Detalhe. */
+    public static function corDoEvento(string $situacao, string $rotulo): string
+    {
+        return match (true) {
+            $situacao === 'entregue'            => 'entregue',
+            $situacao === 'saiu_entrega'        => 'saiu',
+            $situacao === 'aguardando_retirada' => 'retirada',
+            $situacao === 'problema'            => 'problema',
+            $rotulo === 'Postado'               => 'postado',
+            default                             => 'transito',
+        };
     }
 }
