@@ -1,28 +1,42 @@
-{# Postal+ — Detalhe do objeto (Bloco 1b: demonstração). Variáveis: nav, tela #}
+{# Postal+ — Detalhe do objeto (Bloco 2: real sem eventos ou demonstração). Variáveis: nav, tela #}
 {% set o = tela.objeto %}
 <div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="objeto">
     <a href="{{ tela.url_painel }}" class="d-inline-block mb-2"><i class="ti ti-arrow-left me-1"></i>Voltar ao painel</a>
 
     {% if o is null %}
         <div class="alert alert-warning" data-pp-objeto="nao-encontrado">
-            <div>Objeto <strong>{{ tela.codigo ?: '(sem código)' }}</strong> não encontrado.
-            Nesta versão de demonstração só existem os 9 objetos do painel.</div>
+            <div>Objeto <strong>{{ tela.codigo ?: '(sem código)' }}</strong> não encontrado
+            (ou está numa entidade que você não acessa).</div>
         </div>
     {% else %}
         <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
             <h1 class="pp-titulo pp-codigo mb-0" data-pp-objeto="{{ o.codigo }}">{{ o.codigo }}</h1>
             <span class="pp-st pp-st-{{ o.situacao }}">{{ o.rotulo }}</span>
         </div>
-        <div class="text-secondary mb-3">{{ o.servico }} · postado em {{ o.postagem }}</div>
+        <div class="text-secondary mb-3">{{ o.servico }} · postado em {{ o.postagem }}{% if tela.real and o.cadastrado %} · cadastrado em {{ o.cadastrado }}{% endif %}</div>
 
-        {% include '@postalplus/_demo.html.twig' with {
-            texto: 'Linha do tempo e alertas do mockup. Dados reais no Bloco 6; ações nos Blocos 3, 8 e 9.'
-        } only %}
+        {% if tela.real %}
+            <div class="alert alert-info" data-pp-real="1">
+                <div><strong>Ainda não consultado na API Rastro.</strong> A consulta (botão “Consultar agora” e linha do tempo) chega no Bloco 3.</div>
+            </div>
+        {% else %}
+            {% include '@postalplus/_demo.html.twig' with {
+                texto: 'Linha do tempo e alertas do mockup. Dados reais no Bloco 6; ações nos Blocos 3, 8 e 9.'
+            } only %}
+        {% endif %}
 
         <div class="d-flex flex-wrap gap-2 mb-3">
             <button class="btn btn-outline-secondary" disabled title="Bloco 3"><i class="ti ti-refresh me-1"></i>Consultar agora</button>
             <button class="btn btn-outline-secondary" disabled title="Bloco 8">Registrar reclamação nos Correios</button>
             <button class="btn btn-primary" disabled title="Bloco 9"><i class="ti ti-brand-whatsapp me-1"></i>Avisar destinatário (WhatsApp)</button>
+            {% if tela.pode_excluir %}
+                <form method="post" action="{{ tela.url_self }}" class="ms-auto" data-pp-excluir
+                      onsubmit="return confirm('Excluir o objeto {{ o.codigo }}? Eventos e alertas dele também são apagados.');">
+                    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="id" value="{{ o.id }}">
+                    <button type="submit" name="excluir" value="1" class="btn btn-outline-danger"><i class="ti ti-trash me-1"></i>Excluir</button>
+                </form>
+            {% endif %}
         </div>
 
         <ul class="nav nav-tabs mb-3" role="tablist">
@@ -40,6 +54,9 @@
                         <div class="card pp-card">
                             <div class="card-header"><h3 class="card-title">Eventos do rastreio <span class="text-secondary fw-normal">· fonte: API Rastro (SRO)</span></h3></div>
                             <div class="card-body">
+                                {% if o.eventos|length == 0 %}
+                                    <div class="text-secondary" data-pp-sem-eventos>Nenhum evento ainda — o objeto não foi consultado na API.</div>
+                                {% endif %}
                                 <ul class="pp-timeline">
                                     {% for e in o.eventos %}
                                         <li>
@@ -99,9 +116,11 @@
                     <div class="card-header"><h3 class="card-title">Destinatário</h3></div>
                     <div class="card-body">
                         <dl class="row mb-0 pp-dados">
-                            <dt class="col-5">Nome</dt><dd class="col-7">{{ o.destinatario }}</dd>
-                            <dt class="col-5">WhatsApp</dt><dd class="col-7">{{ o.whatsapp ?: '—' }}</dd>
-                            <dt class="col-5">Cidade</dt><dd class="col-7">{{ o.cidade }}</dd>
+                            <dt class="col-5">Destinatário</dt><dd class="col-7">{{ o.destinatario }}</dd>
+                            <dt class="col-5" title="Responsável pelo recebimento">Recebimento</dt><dd class="col-7" data-pp-campo="contato">{{ o.contato ?: '—' }}</dd>
+                            <dt class="col-5">WhatsApp</dt><dd class="col-7" data-pp-campo="whatsapp">{{ o.whatsapp ?: '—' }}{% if tela.real and o.whatsapp and not o.avisar_whatsapp %} <span class="pp-sub">(sem aviso)</span>{% endif %}</dd>
+                            <dt class="col-5">E-mail</dt><dd class="col-7">{{ o.email ?: '—' }}</dd>
+                            <dt class="col-5">Cidade</dt><dd class="col-7">{{ o.cidade ?: '—' }}</dd>
                             <dt class="col-5">Retirada</dt><dd class="col-7">{{ o.retirada ?: '—' }}</dd>
                         </dl>
                     </div>
@@ -112,12 +131,13 @@
                     <div class="card-body">
                         <dl class="row mb-0 pp-dados">
                             <dt class="col-5">Serviço</dt><dd class="col-7">{{ o.servico }}</dd>
-                            <dt class="col-5">Postagem</dt><dd class="col-7">{{ o.postagem }} · {{ o.postagem_local }}</dd>
+                            <dt class="col-5">Postagem</dt><dd class="col-7">{{ o.postagem }}{{ o.postagem_local ? ' · ' ~ o.postagem_local : '' }}</dd>
                             <dt class="col-5">Prazo previsto</dt><dd class="col-7">{{ o.previsto }}</dd>
-                            <dt class="col-5">Entidade</dt><dd class="col-7">{{ tela.entidade }}</dd>
+                            <dt class="col-5">Entidade</dt><dd class="col-7">{{ o.entidade }}</dd>
                             <dt class="col-5">Chamado</dt>
                             <dd class="col-7">{% if o.chamado %}<a href="{{ tela.url_ticket ~ o.chamado }}">#{{ o.chamado }}{{ o.chamado_titulo ? ' · ' ~ o.chamado_titulo : '' }}</a>{% else %}—{% endif %}</dd>
-                            <dt class="col-5">Responsável</dt><dd class="col-7">{{ tela.responsavel }}</dd>
+                            <dt class="col-5">Responsável</dt><dd class="col-7">{{ o.responsavel }}</dd>
+                            {% if o.grupo %}<dt class="col-5">Grupo</dt><dd class="col-7">{{ o.grupo }}</dd>{% endif %}
                         </dl>
                     </div>
                 </div>

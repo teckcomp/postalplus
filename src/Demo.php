@@ -22,7 +22,10 @@ class Demo
      */
     public static function objetos(): array
     {
-        $o = static fn(array $a) => $a + ['alerta_nivel' => '', 'chamado' => 0, 'whatsapp' => '', 'retirada' => '', 'eventos' => []];
+        $o = static fn(array $a) => $a + [
+            'demo' => true, 'alerta_nivel' => '', 'chamado' => 0, 'contato' => '', 'whatsapp' => '', 'email' => '', 'retirada' => '', 'eventos' => [],
+            'entidade' => '', 'responsavel' => '', 'grupo' => '',
+        ];
 
         return [
             $o([

@@ -1,4 +1,4 @@
-{# Postal+ — Painel (Bloco 1b: demonstração). Variáveis: nav, tela #}
+{# Postal+ — Painel (Bloco 2: objetos reais + demonstração). Variáveis: nav, tela #}
 <div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="painel">
     {% include '@postalplus/_nav.html.twig' with {
         nav: nav,
@@ -7,7 +7,7 @@
     } only %}
 
     {% include '@postalplus/_demo.html.twig' with {
-        texto: 'Estes 9 objetos são do mockup. O painel passa a mostrar os objetos reais no Bloco 5.'
+        texto: 'Os objetos marcados “demo” são do mockup e saem no Bloco 5. Os que você cadastrar aparecem no topo, como “Não consultado” até o Bloco 3.'
     } only %}
 
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
@@ -57,16 +57,17 @@
                 <tbody>
                 {% for o in tela.objetos %}
                     <tr data-pp-linha data-card="{{ o.card }}"
-                        data-busca="{{ (o.codigo ~ ' ' ~ o.destinatario ~ ' ' ~ o.cidade ~ ' ' ~ (o.chamado ? '#' ~ o.chamado : ''))|lower }}">
+                        data-pp-origem="{{ o.demo ? 'demo' : 'real' }}"
+                        data-busca="{{ (o.codigo ~ ' ' ~ o.destinatario ~ ' ' ~ o.contato ~ ' ' ~ o.cidade ~ ' ' ~ (o.chamado ? '#' ~ o.chamado : ''))|lower }}">
                         <td>
                             <a class="pp-codigo" href="{{ tela.url_objeto ~ o.codigo }}">{{ o.codigo }}</a>
-                            <div class="pp-sub">{{ o.servico }}</div>
+                            <div class="pp-sub">{% if o.demo %}<span class="badge bg-secondary-lt me-1">demo</span>{% endif %}{{ o.servico }}</div>
                         </td>
                         <td><span class="pp-st pp-st-{{ o.situacao }}">{{ o.rotulo }}</span></td>
                         <td>{{ o.evento }}<div class="pp-sub">{{ o.local }}</div></td>
                         <td class="text-nowrap">{{ o.atualizado }}</td>
                         <td class="{{ o.alerta_nivel ? 'pp-alerta-' ~ o.alerta_nivel : 'text-secondary' }}">{{ o.alerta }}</td>
-                        <td>{{ o.destinatario }}<div class="pp-sub">{{ o.cidade }}</div></td>
+                        <td>{{ o.destinatario }}{% if o.contato %}<div class="pp-sub" data-pp-contato><i class="ti ti-user"></i> {{ o.contato }}</div>{% endif %}<div class="pp-sub">{{ o.cidade }}</div></td>
                         <td>{% if o.chamado %}<a href="{{ tela.url_ticket ~ o.chamado }}">#{{ o.chamado }}</a>{% else %}<span class="text-secondary">—</span>{% endif %}</td>
                     </tr>
                 {% endfor %}

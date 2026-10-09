@@ -3,8 +3,8 @@
 /**
  * Postal+ — Painel de rastreio.
  *
- * Bloco 1b: casca navegável com DADOS DE DEMONSTRAÇÃO (Demo). No Bloco 5 passa a ler
- * glpi_plugin_postalplus_objetos. O diagnóstico da instalação foi para a tela de Configuração.
+ * Bloco 2: objetos cadastrados (tabela real) aparecem primeiro, seguidos dos 9 de DEMONSTRAÇÃO
+ * (marcados "demo"). No Bloco 5 a demonstração sai e o painel fica só com a tabela.
  *
  * @copyright Teckcomp
  * @license   GPLv3+
@@ -13,13 +13,14 @@
 use Glpi\Application\View\TemplateRenderer;
 use GlpiPlugin\Postalplus\Demo;
 use GlpiPlugin\Postalplus\Menu;
+use GlpiPlugin\Postalplus\Objeto;
 use GlpiPlugin\Postalplus\PerfilDireitos;
 use GlpiPlugin\Postalplus\Situacao;
 
 Session::checkRight(PerfilDireitos::RIGHT_OBJETO, READ);
 
 $nav     = Menu::nav('painel');
-$objetos = Demo::objetos();
+$objetos = array_merge(array_map([Objeto::class, 'paraTela'], Objeto::listarVisiveis()), Demo::objetos());
 foreach ($objetos as &$o) {
     $o['card'] = Situacao::cardDe($o['situacao']);
     unset($o['eventos'], $o['alertas']);

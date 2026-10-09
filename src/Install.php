@@ -110,6 +110,7 @@ class Install
                 `servico` varchar(100) DEFAULT NULL,
                 `data_postagem` date DEFAULT NULL,
                 `destinatario_nome` varchar(255) DEFAULT NULL,
+                `destinatario_contato` varchar(255) DEFAULT NULL,
                 `destinatario_whatsapp` varchar(30) DEFAULT NULL,
                 `destinatario_email` varchar(255) DEFAULT NULL,
                 `destinatario_cidade` varchar(255) DEFAULT NULL,
@@ -148,6 +149,12 @@ class Install
                 KEY `date_creation` (`date_creation`),
                 KEY `date_mod` (`date_mod`)
             ) {$opts}");
+        }
+
+        // 0.2.0 (Bloco 2): "Responsável pelo recebimento" — destinatario_nome passa a ser a empresa/cliente.
+        if (!$DB->fieldExists($t, 'destinatario_contato')) {
+            $migration->displayMessage("Adicionando $t.destinatario_contato");
+            $migration->addField($t, 'destinatario_contato', 'string', ['after' => 'destinatario_nome']);
         }
 
         // Eventos SRO devolvidos pela API Rastro (hash evita duplicar a cada consulta).

@@ -1,4 +1,4 @@
-/* Postal+ — Adicionar objetos: validação do código e classificação do lote (nada é gravado no Bloco 1b). */
+/* Postal+ — Adicionar objetos: validação do código (o servidor revalida e grava — Bloco 2) e classificação do lote (grava no Bloco 10). */
 (function () {
     'use strict';
 
@@ -32,6 +32,14 @@
             });
     }
 
+    /** (43) 99999-0021 quando der para reconhecer DDD + número; senão devolve como veio. */
+    function formatarFone(valor) {
+        var d = String(valor || '').replace(/\D+/g, '');
+        if (d.length >= 12 && d.indexOf('55') === 0) { d = d.slice(2); }
+        var m = /^(\d{2})(\d{4,5})(\d{4})$/.exec(d);
+        return m ? '(' + m[1] + ') ' + m[2] + '-' + m[3] : String(valor || '').trim();
+    }
+
     var ROTULO = {
         valido: ['Válido', 'bg-green-lt'],
         invalido: ['Formato inválido', 'bg-red-lt'],
@@ -53,21 +61,49 @@
         // Individual
         var campo = document.getElementById('pp-codigo');
         var status = document.getElementById('pp-codigo-status');
+        var form = document.getElementById('pp-form-individual');
+
+        /** Estado do código: '' (vazio) | invalido | cadastrado | ok */
+        function avaliar() {
+            var v = campo.value.replace(/\s+/g, '').toUpperCase();
+            if (campo.value !== v) { campo.value = v; }
+            status.className = 'small mt-1';
+            if (!v) { status.textContent = ''; return ''; }
+            if (!FORMATO.test(v)) {
+                status.classList.add('pp-valida-erro');
+                status.textContent = 'Formato: 2 letras + 9 dígitos + 2 letras (ex.: AA123456789BR)';
+                return 'invalido';
+            }
+            if (cadastrados.indexOf(v) !== -1) {
+                status.classList.add('pp-valida-erro');
+                status.textContent = 'Já cadastrado';
+                return 'cadastrado';
+            }
+            status.classList.add('pp-valida-ok');
+            status.textContent = 'Formato válido · pronto para salvar';
+            return 'ok';
+        }
+
         if (campo && status) {
-            campo.addEventListener('input', function () {
-                var v = campo.value.replace(/\s+/g, '').toUpperCase();
-                if (campo.value !== v) { campo.value = v; }
-                status.className = 'small mt-1';
-                if (!v) { status.textContent = ''; return; }
-                if (!FORMATO.test(v)) {
-                    status.classList.add('pp-valida-erro');
-                    status.textContent = 'Formato: 2 letras + 9 dígitos + 2 letras (ex.: AA123456789BR)';
-                } else if (cadastrados.indexOf(v) !== -1) {
-                    status.classList.add('pp-valida-erro');
-                    status.textContent = 'Já cadastrado';
-                } else {
-                    status.classList.add('pp-valida-ok');
-                    status.textContent = 'Formato válido · pronto para consultar';
+            campo.addEventListener('input', avaliar);
+            if (campo.value) { avaliar(); }
+        }
+
+        var fone = document.getElementById('pp-whatsapp');
+        if (fone) {
+            fone.addEventListener('blur', function () { fone.value = formatarFone(fone.value); });
+        }
+
+        if (form && campo && status) {
+            form.addEventListener('submit', function (ev) {
+                var estado = avaliar();
+                if (estado !== 'ok') {
+                    ev.preventDefault();
+                    if (estado === '') {
+                        status.className = 'small mt-1 pp-valida-erro';
+                        status.textContent = 'Informe o código de rastreio.';
+                    }
+                    campo.focus();
                 }
             });
         }
@@ -106,5 +142,5 @@
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', iniciar); } else { iniciar(); }
 
-    window.PostalplusAdicionar = { classificar: classificar };
+    window.PostalplusAdicionar = { classificar: classificar, formatarFone: formatarFone };
 })();
