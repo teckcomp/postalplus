@@ -13,6 +13,7 @@
 use Glpi\Application\View\TemplateRenderer;
 use GlpiPlugin\Postalplus\Demo;
 use GlpiPlugin\Postalplus\Menu;
+use GlpiPlugin\Postalplus\Monitor;
 use GlpiPlugin\Postalplus\Objeto;
 use GlpiPlugin\Postalplus\PerfilDireitos;
 use GlpiPlugin\Postalplus\Rastreio;
@@ -44,6 +45,7 @@ TemplateRenderer::getInstance()->display('@postalplus/painel.html.twig', [
         'url_ticket' => Ticket::getFormURL() . '?id=',
         'url_consultar' => $nav['web'] . '/ajax/consultar.php',
         'consultaveis'  => count(Objeto::listarParaConsulta(Rastreio::LIMITE_MANUAL)),
+        'monitor'       => Monitor::estado(),
     ],
 ]);
 

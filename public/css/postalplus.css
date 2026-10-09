@@ -123,3 +123,9 @@
 .pp-param { width: 5rem; display: inline-block; }
 .pp-whats { background: rgba(47, 179, 68, .12); border: 1px solid rgba(47, 179, 68, .35); border-radius: 10px; padding: .85rem 1rem; font-size: .9rem; }
 .pp-whats code { color: inherit; background: none; font-weight: 700; padding: 0; }
+
+/* Bloco 4 — selo do monitoramento */
+.pp-monitor { font-weight: 500; white-space: normal; text-align: left; }
+.pp-monitor-ok .ti-point-filled { animation: pp-pulso 2s ease-in-out infinite; }
+@keyframes pp-pulso { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .pp-monitor-ok .ti-point-filled { animation: none; } }

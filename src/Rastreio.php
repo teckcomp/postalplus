@@ -5,8 +5,12 @@
  *
  * Para cada objeto: pede os eventos, grava só os novos em glpi_plugin_postalplus_eventos (hash único
  * por objeto), recalcula situação / último evento / prazos no objeto e registra a execução em
- * glpi_plugin_postalplus_consultas. Usado por "Consultar agora" (manual), pelo cadastro e, no
- * Bloco 4, pela ação automática.
+ * glpi_plugin_postalplus_consultas. Usado por "Consultar agora" (manual), pelo cadastro e pela ação
+ * automática (Monitor, origem cron).
+ *
+ * Bloco 4: toda consulta agenda proxima_consulta conforme a frequência da situação (freq_* da
+ * Configuração); entregue ou devolvido ao remetente encerra o acompanhamento (is_active = 0, sem
+ * próxima). Falha de credencial/token/rede reagenda o lote para RETENTATIVA_MINUTOS.
  *
  * @copyright Teckcomp
  * @license   GPLv3+
@@ -22,8 +26,26 @@ class Rastreio
     /** Máximo de objetos por "Consultar agora" do painel (o cron do Bloco 4 trabalha em lote). */
     public const LIMITE_MANUAL = 50;
 
-    public function __construct(private Cliente $cliente)
+    /** Depois de falha de credencial/token/rede, tentar de novo em (minutos). */
+    public const RETENTATIVA_MINUTOS = 30;
+
+    /** Situação => chave de frequência (minutos) na configuração. */
+    public const FREQ_POR_SITUACAO = [
+        'saiu_entrega'        => 'freq_saiu_entrega',
+        'aguardando_retirada' => 'freq_aguardando_retirada',
+        'problema'            => 'freq_problema',
+        'em_transito'         => 'freq_transito',
+        'nao_consultado'      => 'freq_transito',
+        'atrasado'            => 'freq_transito',
+        'sem_movimentacao'    => 'freq_transito',
+    ];
+
+    /** @var array<string,mixed>|null */
+    private ?array $cfg;
+
+    public function __construct(private Cliente $cliente, ?array $cfg = null)
     {
+        $this->cfg = $cfg;
     }
 
     public static function doGlpi(): self
@@ -52,17 +74,18 @@ class Rastreio
             if ($fatal !== null) {
                 $itens[] = ['codigo' => (string) $obj['codigo'], 'ok' => false, 'novos' => 0, 'erro' => $fatal];
                 $erros++;
+                $this->adiar((int) $obj['id'], self::RETENTATIVA_MINUTOS);
                 continue;
             }
             try {
                 $item = $this->consultarUm($obj);
             } catch (CwsErro $e) {
                 $item = ['codigo' => (string) $obj['codigo'], 'ok' => false, 'novos' => 0, 'erro' => $e->getMessage()];
-                $this->gravarErro((int) $obj['id'], $e->getMessage());
                 // Falha de credencial/token/rede vale para todos: não insiste nos demais.
                 if (in_array($e->tipo, ['credenciais', 'token', 'rede'], true) || in_array($e->status, [401, 403], true)) {
                     $fatal = $e->getMessage();
                 }
+                $this->gravarErro($obj, $e->getMessage(), $fatal !== null ? self::RETENTATIVA_MINUTOS : null);
             }
             $itens[] = $item;
             $novos  += $item['novos'];
@@ -138,7 +161,7 @@ class Rastreio
         if ($eventos === []) {
             $msg = trim(strip_tags((string) ($resposta['mensagem'] ?? '')));
             $msg = $msg !== '' ? mb_substr($msg, 0, 255) : 'Os Correios ainda não têm eventos para este objeto.';
-            $this->gravarErro((int) $obj['id'], $msg);
+            $this->gravarErro($obj, $msg);
             return ['codigo' => $codigo, 'ok' => false, 'novos' => 0, 'erro' => $msg];
         }
 
@@ -248,6 +271,13 @@ class Rastreio
             'prazo_retirada'          => null,
         ];
 
+        if (Situacao::encerraAcompanhamento($class)) {
+            $upd['is_active']        = 0;
+            $upd['proxima_consulta'] = null;
+        } else {
+            $upd['proxima_consulta'] = $this->proximaConsulta($class['situacao']);
+        }
+
         if ($class['situacao'] === 'aguardando_retirada' && $ultimo['data_evento']) {
             $upd['prazo_retirada'] = date('Y-m-d', strtotime($ultimo['data_evento'] . ' +' . Situacao::PRAZO_RETIRADA_DIAS . ' days'));
         }
@@ -272,15 +302,88 @@ class Rastreio
         return ['situacao' => $class['situacao'], 'rotulo' => $class['rotulo']];
     }
 
-    private function gravarErro(int $objetoId, string $msg): void
+    /**
+     * @param array<string,mixed> $obj
+     * @param int|null $minutos reagendar em N minutos (null = frequência da situação atual)
+     */
+    private function gravarErro(array $obj, string $msg, ?int $minutos = null): void
     {
         /** @var \DBmysql $DB */
         global $DB;
 
         $DB->update(Objeto::getTable(), [
-            'erro_consulta'   => mb_substr($msg, 0, 255),
-            'ultima_consulta' => self::agora(),
-        ], ['id' => $objetoId]);
+            'erro_consulta'    => mb_substr($msg, 0, 255),
+            'ultima_consulta'  => self::agora(),
+            'proxima_consulta' => $minutos !== null
+                ? self::somarMinutos(self::agora(), $minutos)
+                : $this->proximaConsulta((string) ($obj['situacao'] ?? 'nao_consultado')),
+        ], ['id' => (int) $obj['id']]);
+    }
+
+    /** Objeto não consultado porque o lote foi interrompido: só empurra a próxima consulta. */
+    private function adiar(int $objetoId, int $minutos): void
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $DB->update(Objeto::getTable(), ['proxima_consulta' => self::somarMinutos(self::agora(), $minutos)], ['id' => $objetoId]);
+    }
+
+    /** Agora + frequência configurada para a situação. */
+    public function proximaConsulta(string $situacao, ?string $base = null): string
+    {
+        return self::somarMinutos($base ?? self::agora(), self::minutosPara($situacao, $this->config()));
+    }
+
+    /**
+     * Frequência (minutos) da situação, com piso de 5 minutos.
+     *
+     * @param array<string,mixed> $cfg
+     */
+    public static function minutosPara(string $situacao, array $cfg): int
+    {
+        $chave = self::FREQ_POR_SITUACAO[$situacao] ?? 'freq_transito';
+
+        return max(5, (int) ($cfg[$chave] ?? Install::configPadrao()[$chave]));
+    }
+
+    /**
+     * Recalcula proxima_consulta de todos os objetos em acompanhamento (frequência mudou na Configuração):
+     * base = última consulta (ou agora, se nunca consultado), nunca no passado além de agora.
+     *
+     * @param array<string,mixed> $cfg
+     */
+    public static function reagendar(array $cfg): int
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $agora = self::agora();
+        $n     = 0;
+        foreach ($DB->request([
+            'SELECT' => ['id', 'situacao', 'ultima_consulta'],
+            'FROM'   => Objeto::getTable(),
+            'WHERE'  => ['is_deleted' => 0, 'is_active' => 1, 'NOT' => ['situacao' => Situacao::FINAIS]],
+        ]) as $r) {
+            $base = !empty($r['ultima_consulta']) ? (string) $r['ultima_consulta'] : $agora;
+            $DB->update(Objeto::getTable(), [
+                'proxima_consulta' => self::somarMinutos($base, self::minutosPara((string) $r['situacao'], $cfg)),
+            ], ['id' => (int) $r['id']]);
+            $n++;
+        }
+
+        return $n;
+    }
+
+    public static function somarMinutos(string $data, int $minutos): string
+    {
+        return date('Y-m-d H:i:s', strtotime($data) + $minutos * 60);
+    }
+
+    /** @return array<string,mixed> */
+    private function config(): array
+    {
+        return $this->cfg ??= Configuracao::lerCru();
     }
 
     private static function nomeUnidade(array $u): ?string

@@ -15,6 +15,7 @@ use GlpiPlugin\Postalplus\Configuracao;
 use GlpiPlugin\Postalplus\Cws\Cliente;
 use GlpiPlugin\Postalplus\Install;
 use GlpiPlugin\Postalplus\Menu;
+use GlpiPlugin\Postalplus\Monitor;
 use GlpiPlugin\Postalplus\PerfilDireitos;
 
 Session::checkRight(PerfilDireitos::RIGHT_CONFIG, READ);
@@ -30,6 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $r = Configuracao::salvar($_POST);
     if ($r['ok']) {
         Session::addMessageAfterRedirect('Configuração do Postal+ salva.', false, INFO);
+        if ($r['reagendados'] > 0) {
+            Session::addMessageAfterRedirect(sprintf('Frequência alterada: próxima consulta recalculada para %d objeto(s) em acompanhamento.', $r['reagendados']), false, INFO);
+        }
         if ($r['token_descartado']) {
             Session::addMessageAfterRedirect('Credenciais ou ambiente mudaram: o token anterior foi descartado. Use "Testar conexão" para gerar outro.', false, WARNING);
         }
@@ -47,7 +51,7 @@ foreach ($DB->request(['SELECT' => ['id', 'name'], 'FROM' => 'glpi_profiles', 'W
     $perfis[] = ['id' => (int) $p['id'], 'nome' => (string) $p['name']];
 }
 
-// Últimas execuções da consulta (manual/cadastro desde o Bloco 3; automática no Bloco 4).
+// Últimas execuções da consulta (manual, cadastro e automática).
 $execucoes = [];
 foreach ($DB->request(['FROM' => 'glpi_plugin_postalplus_consultas', 'ORDER' => 'date_start DESC', 'LIMIT' => 10]) as $e) {
     $execucoes[] = [
@@ -88,6 +92,9 @@ TemplateRenderer::getInstance()->display('@postalplus/config.html.twig', [
         'pode_alterar' => Session::haveRight(PerfilDireitos::RIGHT_CONFIG, UPDATE),
         'simulado'     => Cliente::simulado(),
         'url_testar'   => $nav['web'] . '/ajax/testar_conexao.php',
+        'monitor'      => Monitor::estado(),
+        'cron_nome'    => Monitor::CRON,
+        'url_cron'     => Monitor::tarefa() !== null ? CronTask::getFormURLWithID((int) Monitor::tarefa()['id']) : '',
     ],
 ]);
 

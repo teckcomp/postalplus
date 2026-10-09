@@ -85,6 +85,19 @@ class Situacao
     /** Situações em que o acompanhamento terminou (não consultar mais). */
     public const FINAIS = ['entregue'];
 
+    /** Rótulos que também encerram o acompanhamento (situação continua "problema"). */
+    public const ROTULOS_FINAIS = ['Devolvido ao remetente'];
+
+    /**
+     * Entregue ao destinatário ou devolvido ao remetente: a consulta automática para (is_active = 0).
+     *
+     * @param array{situacao:string, rotulo:string} $class resultado de classificarEvento()
+     */
+    public static function encerraAcompanhamento(array $class): bool
+    {
+        return in_array($class['situacao'], self::FINAIS, true) || in_array($class['rotulo'], self::ROTULOS_FINAIS, true);
+    }
+
     /**
      * Classifica um evento SRO.
      *

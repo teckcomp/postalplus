@@ -134,9 +134,15 @@
                     <div class="card-header"><h3 class="card-title">Frequência de consulta</h3></div>
                     <div class="card-body pb-0">
                         <p class="text-secondary small mb-2">
-                            Ação automática do GLPI <code>PostalplusConsulta</code> (modo CLI, Bloco 4). Os objetos são consultados
+                            Ação automática do GLPI <code>{{ tela.cron_nome }}</code> (modo CLI). Os objetos são consultados
                             em lote, com intervalo conforme a situação.
                         </p>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3" data-pp-cron>
+                            {% include '@postalplus/_monitor.html.twig' with {m: tela.monitor} only %}
+                            {% if tela.url_cron %}
+                                <a class="small" href="{{ tela.url_cron }}">Ver em Ações automáticas</a>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-vcenter card-table pp-tabela-freq">
@@ -192,7 +198,7 @@
                                 </tr>
                             {% else %}
                                 <tr><td colspan="5" class="text-secondary text-center py-4" data-pp-execucoes="vazio">
-                                    Nenhuma execução ainda. Use “Consultar agora” no painel; a consulta automática entra no Bloco 4.
+                                    Nenhuma execução ainda. A consulta automática registra aqui cada lote; use “Consultar agora” no painel para não esperar.
                                 </td></tr>
                             {% endfor %}
                             </tbody>

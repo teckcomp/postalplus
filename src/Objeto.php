@@ -351,6 +351,39 @@ class Objeto extends CommonDBTM
     }
 
     /**
+     * Objetos com consulta devida para a ação automática: ativos, não finalizados, proxima_consulta nula ou
+     * vencida. Todas as entidades (a ação roda sem sessão), mais atrasados primeiro (nulos antes).
+     *
+     * @return list<array<string,mixed>>
+     */
+    public static function listarDevidos(int $limite, string $agora): array
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $t      = self::getTable();
+        $linhas = [];
+        foreach ($DB->request([
+            'FROM'  => $t,
+            'WHERE' => [
+                "$t.is_deleted" => 0,
+                "$t.is_active"  => 1,
+                'NOT'           => ["$t.situacao" => Situacao::FINAIS],
+                'OR'            => [
+                    ["$t.proxima_consulta" => null],
+                    ["$t.proxima_consulta" => ['<=', $agora]],
+                ],
+            ],
+            'ORDER' => ["$t.proxima_consulta ASC", "$t.id ASC"],
+            'LIMIT' => max(1, $limite),
+        ]) as $r) {
+            $linhas[] = $r;
+        }
+
+        return $linhas;
+    }
+
+    /**
      * Linha da tabela no mesmo formato dos dados de demonstração (painel e detalhe usam o mesmo template).
      *
      * @param array<string,mixed> $r
@@ -440,6 +473,8 @@ class Objeto extends CommonDBTM
             'ultima_consulta'=> $data($r['ultima_consulta'] ?? null, 'd/m/Y H:i'),
             'erro_consulta'  => $erro,
             'consultado'     => !empty($r['ultima_consulta']),
+            'proxima_consulta' => (int) ($r['is_active'] ?? 1) === 1 ? $data($r['proxima_consulta'] ?? null, 'd/m/Y H:i') : '',
+            'encerrado'      => (int) ($r['is_active'] ?? 1) === 0,
             'alertas'        => [],
             'entidade'       => (string) Dropdown::getDropdownName('glpi_entities', (int) $r['entities_id']),
             'responsavel'    => (int) $r['users_id'] > 0 ? (string) Dropdown::getDropdownName('glpi_users', (int) $r['users_id']) : '—',

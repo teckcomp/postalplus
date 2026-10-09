@@ -1,0 +1,6 @@
+{# Postal+ — selo do monitoramento (Bloco 4). Variável: m = Monitor::estado() #}
+{% set cls = {'ok': 'bg-green-lt', 'atencao': 'bg-yellow-lt', 'parado': 'bg-secondary-lt', 'erro': 'bg-red-lt'}[m.nivel] ?? 'bg-secondary-lt' %}
+{% set ico = {'ok': 'ti-point-filled', 'atencao': 'ti-alert-triangle', 'parado': 'ti-player-pause', 'erro': 'ti-alert-circle'}[m.nivel] ?? 'ti-point' %}
+<span class="badge {{ cls }} pp-monitor pp-monitor-{{ m.nivel }}" data-pp-monitor="{{ m.nivel }}" title="{{ m.titulo }}">
+    <i class="ti {{ ico }} me-1"></i>{{ m.texto }}
+</span>

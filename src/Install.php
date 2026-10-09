@@ -13,6 +13,7 @@
 namespace GlpiPlugin\Postalplus;
 
 use Config;
+use CronTask;
 use DBConnection;
 use Migration;
 use ProfileRight;
@@ -37,6 +38,7 @@ class Install
         self::criarDireitos($migration);
         self::criarConfigPadrao();
         self::criarRegrasPadrao();
+        self::registrarAcaoAutomatica($migration);
     }
 
     public static function uninstall(): void
@@ -53,6 +55,30 @@ class Install
         $config->deleteConfigurationValues(self::CONFIG_CONTEXT, array_keys(self::configPadrao()));
 
         ProfileRight::deleteProfileRights(array_keys(PerfilDireitos::getDireitos()));
+
+        CronTask::unregister('postalplus');
+    }
+
+    /**
+     * 0.3.0 (Bloco 4): ação automática PostalplusConsulta, modo CLI, a cada 5 min, o dia todo (a janela
+     * de consulta é aplicada pelo próprio Monitor, conforme a Configuração). Idempotente: register() não
+     * duplica e reinstalar não desfaz ajustes feitos em Configurar › Ações automáticas.
+     */
+    private static function registrarAcaoAutomatica(Migration $migration): void
+    {
+        if ((new CronTask())->getFromDBbyName(Monitor::class, Monitor::CRON)) {
+            return;
+        }
+        $migration->displayMessage('Registrando ação automática ' . Monitor::CRON);
+        CronTask::register(Monitor::class, Monitor::CRON, Monitor::FREQUENCIA_CRON, [
+            'mode'          => CronTask::MODE_EXTERNAL,
+            'state'         => CronTask::STATE_WAITING,
+            'param'         => Monitor::LIMITE_CRON,
+            'hourmin'       => 0,
+            'hourmax'       => 24,
+            'logs_lifetime' => 30,
+            'comment'       => 'Postal+ — consulta o rastreio dos objetos em acompanhamento (janela e frequências na Configuração do plugin).',
+        ]);
     }
 
     /**

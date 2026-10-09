@@ -118,7 +118,7 @@ class Configuracao
      * Valida e grava o formulário da tela de Configuração.
      *
      * @param array<string,mixed> $post
-     * @return array{ok:bool, erros:list<string>, token_descartado:bool}
+     * @return array{ok:bool, erros:list<string>, token_descartado:bool, reagendados:int}
      */
     public static function salvar(array $post): array
     {
@@ -201,7 +201,7 @@ class Configuracao
         $novo['email_equipe'] = implode(', ', $emails);
 
         if ($erros !== []) {
-            return ['ok' => false, 'erros' => $erros, 'token_descartado' => false];
+            return ['ok' => false, 'erros' => $erros, 'token_descartado' => false, 'reagendados' => 0];
         }
 
         // Mudou algo que compõe o token? Descarta o token atual.
@@ -224,7 +224,16 @@ class Configuracao
 
         Config::setConfigurationValues(Install::CONFIG_CONTEXT, $novo);
 
-        return ['ok' => true, 'erros' => [], 'token_descartado' => $token_descartado && (string) $atual['cws_token'] !== ''];
+        // Bloco 4: mudou alguma frequência? Reagenda quem está em acompanhamento (vale já, não só na próxima consulta).
+        $reagendados = 0;
+        foreach (array_keys(self::CHAVES_FREQUENCIA) as $chave) {
+            if ((int) $novo[$chave] !== (int) $atual[$chave]) {
+                $reagendados = Rastreio::reagendar($novo + $atual);
+                break;
+            }
+        }
+
+        return ['ok' => true, 'erros' => [], 'token_descartado' => $token_descartado && (string) $atual['cws_token'] !== '', 'reagendados' => $reagendados];
     }
 
     /** Grava um token obtido da API (cifrado pela GLPIKey via secured_configs). */

@@ -1,10 +1,14 @@
-{# Postal+ — Painel (Bloco 3: objetos reais consultados + demonstração). Variáveis: nav, tela #}
+{# Postal+ — Painel (Bloco 4: objetos reais + monitoramento automático + demonstração). Variáveis: nav, tela #}
 <div class="postalplus pp-pagina container-fluid py-3" data-pp-tela="painel">
     {% include '@postalplus/_nav.html.twig' with {
         nav: nav,
         titulo: 'Painel de rastreio',
         subtitulo: 'Objetos postados pelo contrato · atualizados automaticamente pela API Rastro dos Correios'
     } only %}
+
+    <div class="mb-2" id="pp-monitor">
+        {% include '@postalplus/_monitor.html.twig' with {m: tela.monitor} only %}
+    </div>
 
     {% include '@postalplus/_demo.html.twig' with {
         texto: 'Os objetos marcados “demo” são do mockup e saem no Bloco 5. Os que você cadastrar aparecem no topo, com o rastreio da API.'
@@ -24,9 +28,6 @@
         {% if tela.pode_criar %}
             <a class="btn btn-primary" href="{{ tela.url_add }}"><i class="ti ti-plus me-1"></i>Adicionar objetos</a>
         {% endif %}
-        <span class="badge bg-secondary-lt ms-auto" title="A consulta automática entra no Bloco 4">
-            <i class="ti ti-player-pause me-1"></i>Monitoramento ainda não ativo
-        </span>
     </div>
 
     <div id="pp-consulta-resultado" aria-live="polite"></div>

@@ -13,7 +13,7 @@
             <h1 class="pp-titulo pp-codigo mb-0" data-pp-objeto="{{ o.codigo }}">{{ o.codigo }}</h1>
             <span class="pp-st pp-st-{{ o.situacao }}">{{ o.rotulo }}</span>
         </div>
-        <div class="text-secondary mb-3">{{ o.servico }} · postado em {{ o.postagem }}{% if tela.real %} · {{ o.consultado ? 'última consulta à API em ' ~ o.ultima_consulta : 'ainda não consultado na API' }}{% endif %}</div>
+        <div class="text-secondary mb-3">{{ o.servico }} · postado em {{ o.postagem }}{% if tela.real %} · {{ o.consultado ? 'última consulta à API em ' ~ o.ultima_consulta : 'ainda não consultado na API' }}{% if o.encerrado %} · <span data-pp-agenda="encerrado">acompanhamento encerrado</span>{% elseif o.proxima_consulta %} · <span data-pp-agenda="proxima">próxima consulta automática em {{ o.proxima_consulta }}</span>{% endif %}{% endif %}</div>
 
         {% if tela.real %}
             {% if o.erro_consulta %}
